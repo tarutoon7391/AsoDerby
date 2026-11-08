@@ -417,6 +417,28 @@ button.main{background:#2ecc71;color:#fff}
 #stable .tixrow .tr{flex:1;font-size:10px;font-weight:700;line-height:1.35}
 #stable .main.tixb{padding:8px 12px;font-size:13px;flex:none}
 #stable .pslot b{display:flex;align-items:center;gap:4px}
+#login{display:none;position:fixed;inset:0;z-index:80;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:linear-gradient(#8ec4ec 0 45%,#4a9f46 45% 47%,#5e3d22 47%);font-family:inherit}
+#login .lbox{width:min(360px,100%);background:#fffaf0;border:6px solid #8b5e3c;border-radius:20px;padding:16px 16px 14px;box-shadow:0 12px 32px rgba(40,20,0,.45);display:flex;flex-direction:column;gap:10px;color:#4a3518;box-sizing:border-box}
+#login .lhead{display:flex;align-items:baseline;gap:8px;justify-content:center;margin-bottom:2px}
+#login .lhead span{font-size:26px}
+#login .lhead b{font-size:22px}
+#login .lhead small{font-size:11px;opacity:.65}
+#login .ltabs{display:flex;background:#eadcc0;border-radius:10px;padding:3px;gap:3px}
+#login .ltabs button{flex:1;padding:8px;border-radius:8px;background:transparent;color:#6b4a2a;font-size:13px;font-weight:700}
+#login .ltabs button.on{background:#8b5a2b;color:#fff}
+#login label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:700}
+#login input[type=text],#login input[type=password]{padding:10px 12px;border-radius:10px;border:1px solid #d9c39a;background:#fff;font-size:16px;color:#4a3518;font-weight:400}
+#login label.chk{flex-direction:row;align-items:center;gap:8px;font-weight:600;font-size:12px}
+#login label.chk input{width:18px;height:18px}
+#login .lerr{background:#ffe3e0;color:#9b2c20;border-radius:9px;padding:8px 10px;font-size:12px}
+#login .main.big{width:100%;padding:13px;font-size:16px}
+#login #lGuest{background:transparent;color:#8a6a45;font-size:12px;text-decoration:underline;padding:4px}
+#login .lnote{font-size:10px;opacity:.65;text-align:center;line-height:1.4}
+#stable .acct{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e1cda8;border-radius:10px;padding:8px 10px;margin-bottom:8px;color:#4a3518}
+#stable .acct b{font-size:13px;white-space:nowrap}
+#stable .acct small{flex:1;min-width:0;font-size:10px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stable .acct button{flex:none;padding:5px 10px;font-size:11px;background:#e8dcc4;color:#4a3518}
+#stable .acct.guest button{background:#8b5a2b;color:#fff}
 #stable .onbox{background:#fff8e6;border:1px solid #e6cf9c;border-radius:12px;padding:14px 12px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center;color:#4a3518}
 #stable .onbox b{font-size:14px}
 #stable .onbox small{font-size:11px;opacity:.75;line-height:1.4}
@@ -647,6 +669,7 @@ button.main{background:#2ecc71;color:#fff}
 <div id="focus"></div>
 <div id="tickets"></div>
 <div id="stable"></div>
+<div id="login"></div>
 <div id="train"></div>
 <div id="settle" class="sheet"></div>
 <div id="bar">
@@ -1749,17 +1772,21 @@ let stableOpen = false, stableTab = 'stable', gachaResult = null, skipRace = fal
 
 function resetSave() {
   try { localStorage.removeItem('blockhorse_save'); } catch (e) {}
-  game = { year: 1, week: 1, horses: [], sale: [], retired: [], tickets: [], btix: {}, log: ['データを初期化しました。新しい牧場の始まりです'], nextId: 1 };
+  game = freshGame(); game.log = ['データを初期化しました。新しい牧場の始まりです'];
   money = 20000; selId = -1; stableView = 'list'; stableTab = 'stable'; breedSel = []; schedSel = 0; gachaResult = null;
   refreshSale(); saveAll(); renderStable();
 }
-function saveAll() { try { localStorage.setItem('blockhorse_save', JSON.stringify({ ...game, money })); } catch (e) {} }
+function saveAll() { try { localStorage.setItem('blockhorse_save', JSON.stringify({ ...game, money })); } catch (e) {} pushSave(); }
 function loadAll() {
-  try {
-    const d = JSON.parse(localStorage.getItem('blockhorse_save') || 'null');
-    if (d) { money = d.money; delete d.money; game = Object.assign(game, d); }
-    else money = 20000;
-  } catch (e) { money = 20000; }
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem('blockhorse_save') || 'null'); } catch (e) {}
+  applySaveData(d);
+}
+// 保存データ(ローカルでもサーバーでも同じ形)を game/money に流し込み、古いデータの穴を埋める
+function applySaveData(d) {
+  if (d && typeof d === 'object') { d = { ...d }; money = typeof d.money === 'number' ? d.money : 20000; delete d.money; game = Object.assign(game, d); }
+  else money = 20000;
+  if (!Array.isArray(game.sale)) game.sale = [];
   if (!game.sale.length) refreshSale();
   [...game.horses, ...game.sale, ...game.retired].forEach(h => {
     if (!h.coatName) applyCoat(h, randCoat(false));                 // 旧データに毛色を付与
@@ -2028,19 +2055,119 @@ function horseCard(h) {
   }
   return `<div class="panel">${body}</div>`;
 }
+// ===== アカウント(ログイン)とサーバー保存 =====
+// オンライン版ではユーザーID・パスワードでログインすると、牧場のデータがサーバーに保存されてどの端末からでも続きができる。
+// サーバーがないとき(単体版)はこれまで通りこの端末(localStorage)にだけ保存する
+const escO = x => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const auth = { token: '', user: null, server: null, mode: 'login', err: '', busy: false, guest: false };
+try { auth.token = localStorage.getItem('blockhorse_token') || ''; } catch (e) {}
+const loginEl = document.getElementById('login');
+async function api(path, body) {
+  const res = await fetch('/api/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Token': auth.token }, body: JSON.stringify(body || {}) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || 'サーバーエラー');
+  return j;
+}
+const freshGame = () => ({ year: 1, week: 1, horses: [], sale: [], retired: [], tickets: [], btix: {}, log: [], nextId: 1 });
+async function bootAuth() {
+  let r;
+  try {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 6000);
+    const res = await fetch('/api/me', { headers: { 'X-Token': auth.token }, signal: c.signal }); clearTimeout(t);
+    if (!res.ok) throw 0;
+    r = await res.json();
+  } catch (e) { auth.server = false; return; }                      // サーバーなし＝単体版。ローカル保存で遊ぶ
+  auth.server = true;
+  if (r.user) applyUser(r.user); else showLogin();
+}
+function applyUser(u) {
+  auth.user = { uid: u.uid, name: u.name }; auth.guest = false;
+  player = { id: u.uid, name: u.name };                             // ランキング・対戦の名前はアカウントのもの
+  try { localStorage.setItem('blockhorse_last_uid', u.uid); } catch (e) {}
+  if (u.save) {                                                      // サーバーの牧場データで置き換える
+    game = freshGame(); applySaveData(u.save);
+    selId = -1; stableView = 'list'; stableTab = 'stable'; breedSel = []; schedSel = 0; gachaResult = null; bgachaResult = null;
+    try { localStorage.setItem('blockhorse_save', JSON.stringify({ ...game, money })); } catch (e) {}
+  } else pushSave(true);                                             // 新規アカウントで引き継ぎ：今のデータをサーバーへ
+  hideLogin();
+  if (stableOpen) { renderStable(); refreshView(); }
+  if (sock && online.connected) sock.emit('hello', { pid: player.id, name: player.name, token: auth.token });
+}
+let pushT = null;
+function pushSave(now) {
+  if (!auth.user || !auth.server) return;
+  clearTimeout(pushT);
+  const go = () => api('save', { save: { ...game, money } }).catch(() => {});
+  if (now) go(); else pushT = setTimeout(go, 1500);
+}
+// 画面を閉じる・裏に回すときは待たずに送る
+addEventListener('pagehide', () => {
+  if (!auth.user || !auth.server || !navigator.sendBeacon) return;
+  navigator.sendBeacon('/api/save?token=' + encodeURIComponent(auth.token), new Blob([JSON.stringify({ save: { ...game, money } })], { type: 'application/json' }));
+});
+function showLogin() { auth.err = ''; renderLogin(); loginEl.style.display = 'flex'; }
+function hideLogin() { loginEl.style.display = 'none'; }
+function renderLogin() {
+  const reg = auth.mode === 'reg';
+  let hasLocal = false, usedBefore = false;
+  try { hasLocal = game.horses.length > 0 || game.retired.length > 0 || game.year > 1 || game.week > 1; usedBefore = !!localStorage.getItem('blockhorse_last_uid'); } catch (e) {}
+  const keep = { uid: (document.getElementById('lUid') || {}).value || '', name: (document.getElementById('lName') || {}).value || '', pass: (document.getElementById('lPass') || {}).value || '' };
+  loginEl.innerHTML = `<div class="lbox">
+    <div class="lhead"><span>🐴</span><b>ブロック馬</b><small>競馬シミュレーション</small></div>
+    <div class="ltabs"><button data-lm="login" class="${reg ? '' : 'on'}">ログイン</button><button data-lm="reg" class="${reg ? 'on' : ''}">新規登録</button></div>
+    <label>ユーザーID<input id="lUid" type="text" autocomplete="username" autocapitalize="off" maxlength="16" placeholder="半角英数字 3〜16文字" value="${escO(keep.uid)}"></label>
+    ${reg ? `<label>プレイヤー名<input id="lName" type="text" maxlength="12" placeholder="ランキングに出る名前（12文字まで）" value="${escO(keep.name)}"></label>` : ''}
+    <label>パスワード<input id="lPass" type="password" autocomplete="${reg ? 'new-password' : 'current-password'}" maxlength="64" placeholder="4文字以上" value="${escO(keep.pass)}"></label>
+    ${reg && hasLocal ? `<label class="chk"><input id="lTake" type="checkbox" ${usedBefore ? '' : 'checked'}> この端末にある牧場のデータを引き継ぐ</label>` : ''}
+    ${auth.err ? `<div class="lerr">${escO(auth.err)}</div>` : ''}
+    <button id="lGo" class="main big" ${auth.busy ? 'disabled' : ''}>${auth.busy ? '通信中…' : reg ? '登録してはじめる' : 'ログイン'}</button>
+    <button id="lGuest">ログインせずにこの端末だけで遊ぶ</button>
+    <small class="lnote">${reg ? 'IDとパスワードは忘れないようにメモしておいてね（再発行はできません）' : 'ログインすると牧場のデータがサーバーに保存されて、別の端末からも続きができます'}</small>
+  </div>`;
+}
+loginEl.addEventListener('click', async ev => {
+  const el = ev.target.closest('button'); if (!el) return;
+  if (el.dataset.lm) { auth.mode = el.dataset.lm; auth.err = ''; renderLogin(); return; }
+  if (el.id === 'lGuest') { auth.guest = true; hideLogin(); return; }
+  if (el.id !== 'lGo' || auth.busy) return;
+  const uid = (document.getElementById('lUid').value || '').trim(), pass = document.getElementById('lPass').value || '';
+  const nameEl = document.getElementById('lName'), takeEl = document.getElementById('lTake');
+  if (!/^[a-zA-Z0-9_]{3,16}$/.test(uid)) { auth.err = 'ユーザーIDは半角英数字と_で3〜16文字'; renderLogin(); return; }
+  if (pass.length < 4) { auth.err = 'パスワードは4文字以上'; renderLogin(); return; }
+  const body = { uid, pass };
+  if (auth.mode === 'reg') {
+    body.name = (nameEl ? nameEl.value : '').trim().slice(0, 12);
+    if (!body.name) { auth.err = 'プレイヤー名を入れてね'; renderLogin(); return; }
+    if (takeEl && takeEl.checked) body.save = { ...game, money };
+  }
+  auth.busy = true; auth.err = ''; renderLogin();
+  try {
+    const r = await api(auth.mode === 'reg' ? 'register' : 'login', body);
+    auth.token = r.token; try { localStorage.setItem('blockhorse_token', r.token); } catch (e) {}
+    auth.busy = false;
+    if (auth.mode === 'reg' && !r.user.save) { game = freshGame(); money = 20000; refreshSale(); }   // 引き継がない新規登録はまっさらから
+    applyUser(r.user);
+  } catch (e) { auth.busy = false; auth.err = e.message === 'Failed to fetch' ? 'サーバーにつながりません' : e.message; renderLogin(); }
+});
+async function logout() {
+  try { await api('logout'); } catch (e) {}
+  try { localStorage.removeItem('blockhorse_token'); localStorage.removeItem('blockhorse_save'); } catch (e) {}
+  location.reload();
+}
+
 // ===== オンライン(馬券ランキング・対戦) =====
 // サーバー(server.js)から配信されているときだけ使える。artifact版など単体で開いたときは「接続できません」表示になる
 let player = null;
 try { player = JSON.parse(localStorage.getItem('blockhorse_player') || 'null'); } catch (e) {}
 if (!player || !player.id) player = { id: Math.random().toString(36).slice(2, 10) + Date.now().toString(36), name: '' };
-const savePlayer = () => { try { localStorage.setItem('blockhorse_player', JSON.stringify(player)); } catch (e) {} };
+const savePlayer = () => { if (auth.user) return; try { localStorage.setItem('blockhorse_player', JSON.stringify(player)); } catch (e) {} };
 let sock = null, onlineSub = 'rank';
 const online = { connected: false, ranking: [], rankSort: 'profit', me: null, room: null, lastVs: null, vsHorseId: -1, err: '', spec: null, betEnd: 0, waiting: false, hostOpt: { surface: '芝', dist: 2000, cls: 5 } };
 const onlineRerender = () => { if (stableOpen && stableTab === 'online') { const b = stableEl.querySelector('.sbody'), sc = b ? b.scrollTop : 0; renderStable(); const b2 = stableEl.querySelector('.sbody'); if (b2) b2.scrollTop = sc; } };
 function connectOnline() {
   if (sock || typeof io === 'undefined') return;
   sock = io();
-  sock.on('connect', () => { online.connected = true; online.err = ''; sock.emit('hello', { pid: player.id, name: player.name }); sock.emit('getRanking'); onlineRerender(); });
+  sock.on('connect', () => { online.connected = true; online.err = ''; sock.emit('hello', { pid: player.id, name: player.name, token: auth.token }); sock.emit('getRanking'); onlineRerender(); });
   sock.on('disconnect', () => { online.connected = false; online.room = null; onlineRerender(); });
   sock.on('me', m => { online.me = m; if (m.name && m.name !== player.name) { player.name = m.name; savePlayer(); } onlineRerender(); });
   sock.on('ranking', l => { online.ranking = l; onlineRerender(); });
@@ -2062,8 +2189,10 @@ function onlineAction(act, d, el) {
   if (act === 'sub') { onlineSub = d.v; if (d.v === 'rank' && sock && online.connected) sock.emit('getRanking'); renderStable(); return; }
   if (act === 'name') {
     const inp = document.getElementById('onName'), v = inp ? inp.value.trim().slice(0, 12) : '';
-    if (!v) return; player.name = v; savePlayer(); if (sock && online.connected) sock.emit('setName', v); renderStable(); return;
+    if (!v) return; player.name = v; savePlayer(); if (auth.user) auth.user.name = v; if (sock && online.connected) sock.emit('setName', v); renderStable(); return;
   }
+  if (act === 'logout') { logout(); return; }
+  if (act === 'login') { auth.mode = 'login'; showLogin(); return; }
   if (act === 'retry') { if (sock) sock.connect(); else connectOnline(); renderStable(); return; }
   if (!sock || !online.connected) return;
   if (act === 'sort') { online.rankSort = d.v; onlineRerender(); return; }
@@ -2124,12 +2253,13 @@ function onlineGo() {
   resetRace(); planOrder = online.spec.planOrder.slice();
   state = 'count'; countT = 7.6;
 }
-const escO = x => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function onlineHTML() {
   if (typeof io === 'undefined' || window.__noSock) return `<div class="onbox off"><b>🌐 オンライン機能はオンライン版でだけ使えます</b><small>Railwayなどで公開したURLから開くと、馬券ランキングと対戦が使えるようになります</small></div>`;
   if (!sock) connectOnline();
   const sub = `<div class="isub">${[['rank', '🏆 馬券ランキング'], ['vs', '⚔️ 対戦']].map(([k, n]) => `<button data-on="sub" data-v="${k}" class="${onlineSub === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
-  const nameRow = `<div class="onname"><span>${online.connected ? '🟢' : '🔴'}</span><input id="onName" type="text" maxlength="12" placeholder="プレイヤー名" value="${escO(player.name)}"><button class="main sm" data-on="name">保存</button></div>`;
+  const acct = auth.user ? `<div class="acct"><span>👤</span><b>${escO(auth.user.name)}</b><small>ID: ${escO(auth.user.uid)} ・ サーバー保存中</small><button data-on="logout">ログアウト</button></div>`
+    : auth.server ? `<div class="acct guest"><span>👤</span><b>ゲスト（この端末だけ）</b><small>ログインすると牧場のデータが保存されます</small><button data-on="login">ログイン</button></div>` : '';
+  const nameRow = acct + `<div class="onname"><span>${online.connected ? '🟢' : '🔴'}</span><input id="onName" type="text" maxlength="12" placeholder="プレイヤー名" value="${escO(player.name)}"><button class="main sm" data-on="name">保存</button></div>`;
   if (!online.connected) return sub + nameRow + `<div class="onbox off"><b>サーバーに接続中…</b><small>つながらないときは少し待ってからもう一度</small><button class="main sm" data-on="retry">再接続</button></div>`;
   if (!player.name) return sub + nameRow + `<div class="onbox off"><b>まずプレイヤー名を決めてね</b><small>ランキングと対戦ロビーに表示される名前です（12文字まで）</small></div>`;
   return sub + nameRow + (onlineSub === 'rank' ? rankingHTML() : vsHTML());
@@ -3083,7 +3213,7 @@ function genCommentary(order) {
 }
 
 // ================= ループ =================
-resetRace(); loadAll(); showStable();
+resetRace(); loadAll(); showStable(); bootAuth();
 const clock = new THREE.Clock();
 function loop() {
   requestAnimationFrame(loop);

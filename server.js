@@ -6,23 +6,31 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
 
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');   // Railwayでボリュームを付けるならそのパスを指定
-const FILE = path.join(DATA_DIR, 'players.json');
+const FILE = path.join(DATA_DIR, 'db.json');
+const OLD_FILE = path.join(DATA_DIR, 'players.json');
+const SAVE_MAX = 600 * 1024;   // 牧場データの上限(バイト)
 const BET_SEC = 45;            // 対戦レースの馬券購入時間(秒)
 const ROOM_MAX = 8;            // 1ルームの最大人数
 const N_HORSE = 16;
 
 const app = express();
+app.set('trust proxy', 1);          // Railwayなどのプロキシ越しでも接続元IPを正しく取る
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e6 });
+app.use(express.json({ limit: '700kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ===== プレイヤーデータ(ランキング) =====
+// players: pid -> { pid, name, 成績..., (アカウントなら) pass:{salt,hash}, tokens:[], save:{牧場データ}, created }
 let players = {};
-try { fs.mkdirSync(DATA_DIR, { recursive: true }); players = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch (e) { players = {}; }
+try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
+try { players = JSON.parse(fs.readFileSync(FILE, 'utf8')); }
+catch (e) { try { players = JSON.parse(fs.readFileSync(OLD_FILE, 'utf8')); } catch (e2) { players = {}; } }
 let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
@@ -36,7 +44,65 @@ function getPlayer(pid, name) {
   p.seen = Date.now();
   return p;
 }
-const ranking = () => Object.values(players).filter(p => p.name && (p.n || p.vsRaces)).map(p => ({ pid: p.pid, name: p.name, bet: p.bet, pay: p.pay, hits: p.hits, n: p.n, best: p.best, vsWins: p.vsWins, vsRaces: p.vsRaces }));
+const pubStats = p => ({ pid: p.pid, name: p.name, bet: p.bet, pay: p.pay, hits: p.hits, n: p.n, best: p.best, vsWins: p.vsWins, vsRaces: p.vsRaces });
+const ranking = () => Object.values(players).filter(p => p.name && (p.n || p.vsRaces)).map(pubStats);
+
+// ===== アカウント(ユーザーID・プレイヤー名・パスワード) =====
+// パスワードはscryptでハッシュ化して保存。ログインするとトークンを発行し、クライアントはそれを持って保存・読込する
+const UID_RE = /^[a-zA-Z0-9_]{3,16}$/;
+const uidKey = uid => String(uid || '').toLowerCase();
+const hashPass = (pass, salt) => crypto.scryptSync(String(pass), salt, 32).toString('hex');
+const tokenOwner = {};                                   // token -> pid (起動時に再構築)
+for (const p of Object.values(players)) for (const t of p.tokens || []) tokenOwner[t] = p.pid;
+function issueToken(p) {
+  const t = crypto.randomBytes(24).toString('hex');
+  p.tokens = (p.tokens || []).slice(-9); p.tokens.push(t); tokenOwner[t] = p.pid; save();
+  return t;
+}
+const userOf = req => { const t = req.get('X-Token') || req.query.token; const pid = t && tokenOwner[t]; return pid && players[pid] && players[pid].pass ? players[pid] : null; };
+const userView = p => ({ uid: p.pid, name: p.name, save: p.save || null });
+// ログイン試行の制限(同じIPから連続で失敗したら少し待たせる)
+const fails = {};
+function tooMany(ip) { const f = fails[ip]; return f && f.n >= 8 && Date.now() - f.t < 10 * 60 * 1000; }
+function failed(ip) { const f = fails[ip] || (fails[ip] = { n: 0, t: 0 }); f.n++; f.t = Date.now(); }
+
+app.post('/api/register', (req, res) => {
+  const { uid, name, pass, save: sv } = req.body || {};
+  if (!UID_RE.test(uid || '')) return res.status(400).json({ error: 'ユーザーIDは半角英数字と_で3〜16文字' });
+  const nm = cleanName(name); if (!nm) return res.status(400).json({ error: 'プレイヤー名を入れてね' });
+  if (typeof pass !== 'string' || pass.length < 4 || pass.length > 64) return res.status(400).json({ error: 'パスワードは4〜64文字' });
+  const key = uidKey(uid);
+  if (players[key] && players[key].pass) return res.status(409).json({ error: 'そのユーザーIDはもう使われています' });
+  const salt = crypto.randomBytes(16).toString('hex');
+  const p = getPlayer(key);
+  Object.assign(p, { pid: key, name: nm, pass: { salt, hash: hashPass(pass, salt) }, tokens: [], created: Date.now() });
+  if (sv && typeof sv === 'object' && Array.isArray(sv.horses) && JSON.stringify(sv).length <= SAVE_MAX) p.save = sv;
+  const token = issueToken(p);
+  res.json({ ok: true, token, user: userView(p) });
+});
+app.post('/api/login', (req, res) => {
+  const ip = req.ip; if (tooMany(ip)) return res.status(429).json({ error: '失敗が続いたので10分ほど待ってね' });
+  const { uid, pass } = req.body || {};
+  const p = players[uidKey(uid)];
+  if (!p || !p.pass || hashPass(pass || '', p.pass.salt) !== p.pass.hash) { failed(ip); return res.status(401).json({ error: 'ユーザーIDかパスワードが違います' }); }
+  delete fails[ip];
+  p.seen = Date.now();
+  res.json({ ok: true, token: issueToken(p), user: userView(p) });
+});
+app.get('/api/me', (req, res) => { const p = userOf(req); res.json({ user: p ? userView(p) : null }); });
+app.post('/api/save', (req, res) => {
+  const p = userOf(req); if (!p) return res.status(401).json({ error: 'ログインしていません' });
+  const sv = req.body && req.body.save;
+  if (!sv || typeof sv !== 'object' || !Array.isArray(sv.horses)) return res.status(400).json({ error: 'データが不正です' });
+  if (JSON.stringify(sv).length > SAVE_MAX) return res.status(413).json({ error: 'データが大きすぎます' });
+  p.save = sv; p.seen = Date.now(); save();
+  res.json({ ok: true });
+});
+app.post('/api/logout', (req, res) => {
+  const t = req.get('X-Token'), p = userOf(req);
+  if (p && t) { p.tokens = (p.tokens || []).filter(x => x !== t); delete tokenOwner[t]; save(); }
+  res.json({ ok: true });
+});
 
 // ===== 対戦ルーム =====
 const rooms = {};   // code -> { code, host(pid), state, members: Map<socketId, {pid,name,horse}>, spec, ready:Set, timer }
@@ -73,16 +139,19 @@ io.on('connection', sock => {
   sock.data = { pid: null, room: null };
 
   sock.on('hello', d => {
-    const pid = String((d && d.pid) || '').slice(0, 40); if (!pid) return;
+    if (!d) return;
+    const tokPid = d.token && tokenOwner[d.token];
+    let pid = tokPid || String(d.pid || '').slice(0, 40); if (!pid) return;
+    if (!tokPid && players[pid] && players[pid].pass) return sock.emit('err', 'ログインが必要です');   // アカウントのIDをゲストが名乗ることはできない
     sock.data.pid = pid;
-    const p = getPlayer(pid, d.name); save();
-    sock.emit('me', { pid: p.pid, name: p.name, bet: p.bet, pay: p.pay, hits: p.hits, n: p.n, best: p.best, vsWins: p.vsWins, vsRaces: p.vsRaces });
+    const p = getPlayer(pid, tokPid ? (d.name || players[pid].name) : d.name); save();
+    sock.emit('me', pubStats(p));
   });
   sock.on('setName', name => {
     if (!sock.data.pid) return;
     const p = getPlayer(sock.data.pid, name); save();
     const r = rooms[sock.data.room]; if (r && r.members.get(sock.id)) { r.members.get(sock.id).name = p.name; emitRoom(r); }
-    sock.emit('me', p);
+    sock.emit('me', pubStats(p));
   });
   sock.on('getRanking', () => sock.emit('ranking', ranking()));
 
