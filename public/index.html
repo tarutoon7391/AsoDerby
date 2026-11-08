@@ -395,7 +395,8 @@ button.main{background:#2ecc71;color:#fff}
 #stable .capl .cl0{flex:none;width:34px;background:#7a1fd1;color:#fff;justify-content:center;line-height:1.15;font-size:9px}
 #stable .cr.ped{margin:5px 0 0;font-size:10px}
 #stable .bdel{display:block;margin:6px 0 0 auto;padding:3px 9px;font-size:10px;background:transparent;border:1px solid #d4b49a;color:#a0623a}
-#stable .sex{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:12px;font-weight:900;color:#fff;flex:none}
+#stable .sex{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;color:#fff;flex:none;vertical-align:middle}
+#stable .sex svg{width:13px;height:13px;display:block;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 #stable .sex.m{background:#2f7fd8}
 #stable .sex.f{background:#e0558a}
 #stable .isub{display:flex;gap:6px;margin-bottom:10px}
@@ -2173,7 +2174,11 @@ function vsHTML() {
 let breedSel = [], inheritSub = 'breed', bgachaResult = null;   // 親：'r12'(引退馬) / 't34'(配合券)
 const breedHorse = key => key[0] === 'r' ? game.retired.find(h => h.id === +key.slice(1)) : game.tickets.find(h => h.id === +key.slice(1));
 const bredThisYear = h => h.bredYear === game.year;
-const sexMark = h => h.sex === '牝' ? '<span class="sex f">♀</span>' : '<span class="sex m">♂</span>';
+const SEX_SVG = {
+  m: '<svg viewBox="0 0 20 20"><circle cx="8" cy="12" r="4.6"/><path d="M11.3 8.7 17 3M17 3h-5M17 3v5"/></svg>',
+  f: '<svg viewBox="0 0 20 20"><circle cx="10" cy="7.5" r="4.6"/><path d="M10 12.1V19M7 16h6"/></svg>',
+};
+const sexMark = h => h.sex === '牝' ? `<span class="sex f">${SEX_SVG.f}</span>` : `<span class="sex m">${SEX_SVG.m}</span>`;
 const achTxt = h => { const W = h.wins || {}, t = []; if (W[7]) t.push(`レジェンド${W[7]}勝`); if (W[6]) t.push(`海外G1 ${W[6]}勝`); if (W[5]) t.push(`G1 ${W[5]}勝`); if (W[3] || W[4]) t.push(`G2・G3 ${(W[3] || 0) + (W[4] || 0)}勝`); return t.join('・') || '重賞未勝利'; };
 function breedCost() { return BREED_FEE; }
 function breedCard(h, key) {
