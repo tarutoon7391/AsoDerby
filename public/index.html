@@ -410,6 +410,10 @@ button.main{background:#2ecc71;color:#fff}
 #stable .isub button{flex:1;padding:9px 6px;font-size:13px;background:#f3e3d0;color:#6b4a2a;border:1px solid #e1cda8;position:relative}
 #stable .isub button.on{background:#8b5a2b;color:#fff;border-color:#8b5a2b}
 #stable .isub em{font-style:normal;position:absolute;top:-6px;right:-4px;background:#e53935;color:#fff;font-size:10px;border-radius:9px;padding:1px 6px}
+#stable .bulk{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 8px}
+#stable .bulk span{font-size:11px;opacity:.7;margin-right:2px}
+#stable .bulk button{padding:4px 9px;font-size:11px;font-weight:900;border-radius:8px;background:#fff;border:1.5px solid var(--rc);color:var(--rc)}
+#stable .bulk button i{font-style:normal;font-weight:700;opacity:.75;margin-left:3px}
 #stable .bcard.tk{border-left:5px solid var(--rc)}
 #stable .bcard .rar{color:#fff;font-size:10px;font-weight:900;border-radius:5px;padding:1px 5px}
 #stable .bcard .sgrid{margin:4px 0 0}
@@ -2342,6 +2346,12 @@ const SEX_SVG = {
 const sexMark = h => h.sex === '牝' ? `<span class="sex f">${SEX_SVG.f}</span>` : `<span class="sex m">${SEX_SVG.m}</span>`;
 const achTxt = h => { const W = h.wins || {}, t = []; if (W[7]) t.push(`レジェンド${W[7]}勝`); if (W[6]) t.push(`海外G1 ${W[6]}勝`); if (W[5]) t.push(`G1 ${W[5]}勝`); if (W[3] || W[4]) t.push(`G2・G3 ${(W[3] || 0) + (W[4] || 0)}勝`); return t.join('・') || '重賞未勝利'; };
 function breedCost() { return BREED_FEE; }
+// 配合券(ガチャで出た馬)をレア度ごとにまとめて捨てるボタン。自分の引退馬は対象にしない
+function bulkDelHTML() {
+  const rows = Object.values(BRAR).map(r => [r, game.tickets.filter(h => h.rar === r.n).length]).filter(([, n]) => n);
+  if (!rows.length || game.tickets.length < 2) return '';
+  return `<div class="bulk"><span>まとめて捨てる</span>${rows.map(([r, n]) => `<button data-bdelrar="${r.n}" style="--rc:${r.c}">${r.n}<i>×${n}</i></button>`).join('')}</div>`;
+}
 function breedCard(h, key) {
   const on = breedSel.includes(key), used = !h.ticket && bredThisYear(h), other = breedSel.map(breedHorse).find((x, i) => x && breedSel[i] !== key);
   const same = !on && other && other.sex === h.sex, dis = used || same || (!on && breedSel.length >= 2);
@@ -2381,6 +2391,7 @@ function inheritHTML() {
     <div class="hint">子は親の素質を受け継ぎ、親を少しずつ超えていきます。大きなレースで勝った馬ほど良い子が生まれやすい。世代を重ねてレジェンドを目指そう</div>
   </div>
   <div class="lb2">配合券（${game.tickets.length}枚・使うとなくなります）</div>
+  ${bulkDelHTML()}
   ${game.tickets.length ? game.tickets.map(h => breedCard(h, 't' + h.id)).join('') : '<div class="empty">配合券がありません。「配合ガチャ」で手に入れよう</div>'}
   <div class="lb2">引退馬（1頭につき1年に1回）</div>
   ${game.retired.length ? game.retired.map(h => breedCard(h, 'r' + h.id)).join('') : '<div class="empty">まだ引退馬がいません。引退した馬が繁殖に回ります</div>'}`;
@@ -2495,6 +2506,11 @@ stableEl.addEventListener('click', ev => {
     const k = d.bdel, x = breedHorse(k);
     if (x) pendingAsk = { tag: '🗑 削除', title: `${x.name}を${x.ticket ? '捨て' : '削除し'}ますか？`, q: x.ticket ? '配合券がなくなります。元には戻せません' : '繁殖に使えなくなります。元には戻せません', ok: x.ticket ? '捨てる' : '削除する',
       run: () => { if (k[0] === 'r') game.retired = game.retired.filter(h => h !== x); else game.tickets = game.tickets.filter(h => h !== x); breedSel = breedSel.filter(s => s !== k); saveAll(); renderStable(); } };
+    renderStable(); return; }
+  if (d.bdelrar) {
+    const rar = d.bdelrar, list = game.tickets.filter(h => h.rar === rar);
+    if (list.length) pendingAsk = { tag: '🗑 まとめて削除', title: `${rar}の配合券を${list.length}枚すべて捨てますか？`, q: `${list.map(h => h.name).join('、')}<br>配合券がなくなります。引退馬は消えません。元には戻せません`, ok: `${list.length}枚捨てる`,
+      run: () => { game.tickets = game.tickets.filter(h => h.rar !== rar); breedSel = breedSel.filter(k => breedHorse(k)); saveAll(); renderStable(); } };
     renderStable(); return; }
   if (d.askreset !== undefined) {
     pendingAsk = { tag: '🗑 データ初期化', title: 'すべてのデータを消しますか？', q: '馬・引退馬・所持金・年数がすべて消えて、1年目からやり直しになります。<br>元には戻せません', ok: '消して最初から', run: resetSave };
