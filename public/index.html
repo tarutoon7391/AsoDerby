@@ -1838,11 +1838,11 @@ function achOf(h) {
   const W = h.wins || {};
   return Math.min(3, 0.25 * Math.min(4, (W[3] || 0) + (W[4] || 0)) + 0.5 * Math.min(4, W[5] || 0) + (W[6] ? 1 : 0) + (W[7] ? 1.5 : 0));
 }
-const capGain = (a, b) => 2.5 + achOf(a) + achOf(b);            // 子の上限は親の平均＋(2.5〜8.5)
+const capGain = (a, b) => 2.5 + achOf(a) + achOf(b);            // 子の上限は親の実際の能力の平均＋(2.5〜8.5)
 function breedFoal(a, b) {
   const h = makeHorse(20, false), g = capGain(a, b);
   for (const k of CORE_KEYS) {
-    h.cap[k] = Math.max(20, (capOf(a, k) + capOf(b, k)) / 2 + g + 1.5 * randn());   // 親の平均＋α。100を超えてもいい
+    h.cap[k] = Math.max(20, (a.st[k] + b.st[k]) / 2 + g + 1.5 * randn());        // 親の「実際の能力」の平均＋α。鍛えた親からしか親超えの子は生まれない
     h.st[k] = Math.max(10, Math.min(h.cap[k] - 3, 0.6 * (a.st[k] + b.st[k]) / 2 + 3 * randn()));
   }
   for (const k of APT_KEYS) {                                      // 健康・適性は 親の平均30% ＋ ランダム70%
