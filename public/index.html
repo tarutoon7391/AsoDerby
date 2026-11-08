@@ -410,6 +410,9 @@ button.main{background:#2ecc71;color:#fff}
 #stable .isub button{flex:1;padding:9px 6px;font-size:13px;background:#f3e3d0;color:#6b4a2a;border:1px solid #e1cda8;position:relative}
 #stable .isub button.on{background:#8b5a2b;color:#fff;border-color:#8b5a2b}
 #stable .isub em{font-style:normal;position:absolute;top:-6px;right:-4px;background:#e53935;color:#fff;font-size:10px;border-radius:9px;padding:1px 6px}
+#stable .bfilter{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px}
+#stable .bfilter button{--rc:#8b5a2b;padding:5px 10px;font-size:11px;font-weight:800;border-radius:999px;background:#fff;border:1.5px solid var(--rc);color:var(--rc)}
+#stable .bfilter button.on{background:var(--rc);color:#fff}
 #stable .bulk{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 8px}
 #stable .bulk span{font-size:11px;opacity:.7;margin-right:2px}
 #stable .bulk button{padding:4px 9px;font-size:11px;font-weight:900;border-radius:8px;background:#fff;border:1.5px solid var(--rc);color:var(--rc)}
@@ -2336,7 +2339,7 @@ function vsHTML() {
 }
 
 // ===== 継承(配合)タブ =====
-let breedSel = [], inheritSub = 'breed', bgachaResult = null;   // 親：'r12'(引退馬) / 't34'(配合券)
+let breedSel = [], inheritSub = 'breed', bgachaResult = null, breedFilter = 'all';   // breedFilter: 'all' / 'mine'(自分の引退馬) / レア度名   // 親：'r12'(引退馬) / 't34'(配合券)
 const breedHorse = key => key[0] === 'r' ? game.retired.find(h => h.id === +key.slice(1)) : game.tickets.find(h => h.id === +key.slice(1));
 const bredThisYear = h => h.bredYear === game.year;
 const SEX_SVG = {
@@ -2346,6 +2349,25 @@ const SEX_SVG = {
 const sexMark = h => h.sex === '牝' ? `<span class="sex f">${SEX_SVG.f}</span>` : `<span class="sex m">${SEX_SVG.m}</span>`;
 const achTxt = h => { const W = h.wins || {}, t = []; if (W[7]) t.push(`レジェンド${W[7]}勝`); if (W[6]) t.push(`海外G1 ${W[6]}勝`); if (W[5]) t.push(`G1 ${W[5]}勝`); if (W[3] || W[4]) t.push(`G2・G3 ${(W[3] || 0) + (W[4] || 0)}勝`); return t.join('・') || '重賞未勝利'; };
 function breedCost() { return BREED_FEE; }
+// 絞り込みチップ：すべて / 自分の馬(引退馬) / 持っているレア度
+function breedFilterHTML() {
+  const rows = Object.values(BRAR).map(r => [r, game.tickets.filter(h => h.rar === r.n).length]).filter(([, n]) => n);
+  if (!game.retired.length && !rows.length) return '';
+  if (!['all', 'mine', ...rows.map(([r]) => r.n)].includes(breedFilter)) breedFilter = 'all';   // 該当がなくなった絞り込みは解除
+  const chip = (k, label, c) => `<button data-bfilter="${k}" class="${breedFilter === k ? 'on' : ''}" ${c ? `style="--rc:${c}"` : ''}>${label}</button>`;
+  return `<div class="bfilter">${chip('all', 'すべて')}${chip('mine', `🏠 自分の馬 ×${game.retired.length}`)}${rows.map(([r, n]) => chip(r.n, `${r.n} ×${n}`, r.c)).join('')}</div>`;
+}
+function breedListHTML() {
+  const tk = breedFilter === 'mine' ? [] : game.tickets.filter(h => breedFilter === 'all' || h.rar === breedFilter);
+  const rt = breedFilter === 'all' || breedFilter === 'mine' ? game.retired : [];
+  let out = '';
+  if (breedFilter !== 'mine') out += `<div class="lb2">配合券（${breedFilter === 'all' ? `${game.tickets.length}枚` : `${breedFilter} ${tk.length}枚`}・使うとなくなります）</div>
+    ${breedFilter === 'all' ? bulkDelHTML() : tk.length > 1 ? `<div class="bulk"><span>まとめて捨てる</span><button data-bdelrar="${breedFilter}" style="--rc:${(BRAR[Object.keys(BRAR).find(k => BRAR[k].n === breedFilter)] || {}).c}">${breedFilter}<i>×${tk.length}</i></button></div>` : ''}
+    ${tk.length ? tk.map(h => breedCard(h, 't' + h.id)).join('') : '<div class="empty">配合券がありません。「配合ガチャ」で手に入れよう</div>'}`;
+  if (breedFilter === 'all' || breedFilter === 'mine') out += `<div class="lb2">引退馬（1頭につき1年に1回）</div>
+    ${rt.length ? rt.map(h => breedCard(h, 'r' + h.id)).join('') : '<div class="empty">まだ引退馬がいません。引退した馬が繁殖に回ります</div>'}`;
+  return out;
+}
 // 配合券(ガチャで出た馬)をレア度ごとにまとめて捨てるボタン。自分の引退馬は対象にしない
 function bulkDelHTML() {
   const rows = Object.values(BRAR).map(r => [r, game.tickets.filter(h => h.rar === r.n).length]).filter(([, n]) => n);
@@ -2390,11 +2412,8 @@ function inheritHTML() {
     <button class="main big" data-breed ${can ? '' : 'disabled'}>${full ? '厩舎が満員です' : a && b ? `配合する ・ ${yen(cost)}` : '牡馬と牝馬を1頭ずつ選んでね'}</button>
     <div class="hint">子は親の素質を受け継ぎ、親を少しずつ超えていきます。大きなレースで勝った馬ほど良い子が生まれやすい。世代を重ねてレジェンドを目指そう</div>
   </div>
-  <div class="lb2">配合券（${game.tickets.length}枚・使うとなくなります）</div>
-  ${bulkDelHTML()}
-  ${game.tickets.length ? game.tickets.map(h => breedCard(h, 't' + h.id)).join('') : '<div class="empty">配合券がありません。「配合ガチャ」で手に入れよう</div>'}
-  <div class="lb2">引退馬（1頭につき1年に1回）</div>
-  ${game.retired.length ? game.retired.map(h => breedCard(h, 'r' + h.id)).join('') : '<div class="empty">まだ引退馬がいません。引退した馬が繁殖に回ります</div>'}`;
+  ${breedFilterHTML()}
+  ${breedListHTML()}`;
 }
 function saleCard(h, k) {
   const full = game.horses.length >= MAX_HORSES;
@@ -2507,6 +2526,7 @@ stableEl.addEventListener('click', ev => {
     if (x) pendingAsk = { tag: '🗑 削除', title: `${x.name}を${x.ticket ? '捨て' : '削除し'}ますか？`, q: x.ticket ? '配合券がなくなります。元には戻せません' : '繁殖に使えなくなります。元には戻せません', ok: x.ticket ? '捨てる' : '削除する',
       run: () => { if (k[0] === 'r') game.retired = game.retired.filter(h => h !== x); else game.tickets = game.tickets.filter(h => h !== x); breedSel = breedSel.filter(s => s !== k); saveAll(); renderStable(); } };
     renderStable(); return; }
+  if (d.bfilter) { breedFilter = d.bfilter; renderStable(); return; }
   if (d.bdelrar) {
     const rar = d.bdelrar, list = game.tickets.filter(h => h.rar === rar);
     if (list.length) pendingAsk = { tag: '🗑 まとめて削除', title: `${rar}の配合券を${list.length}枚すべて捨てますか？`, q: `${list.map(h => h.name).join('、')}<br>配合券がなくなります。引退馬は消えません。元には戻せません`, ok: `${list.length}枚捨てる`,
