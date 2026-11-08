@@ -1,0 +1,14 @@
+{
+  "name": "block-horse-online",
+  "version": "1.0.0",
+  "description": "ブロック馬 競馬シミュレーション オンライン版（馬券ランキング・対戦）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
