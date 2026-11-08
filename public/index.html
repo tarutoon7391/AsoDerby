@@ -2091,6 +2091,7 @@ async function bootAuth() {
   } catch (e) { auth.server = false; return; }                      // サーバーなし＝単体版。ローカル保存で遊ぶ
   auth.server = true;
   if (r.user) applyUser(r.user); else showLogin();
+  connectOnline();                                                   // オンライン画面を開かなくても馬券の成績がランキングに届くよう、最初からつないでおく
 }
 function applyUser(u) {
   auth.user = { uid: u.uid, name: u.name }; auth.guest = false;
@@ -2186,7 +2187,7 @@ const onlineRerender = () => { if (stableOpen && stableTab === 'online') { const
 function connectOnline() {
   if (sock || typeof io === 'undefined') return;
   sock = io();
-  sock.on('connect', () => { online.connected = true; online.err = ''; sock.emit('hello', { pid: player.id, name: player.name, token: auth.token }); sock.emit('getRanking'); onlineRerender(); });
+  sock.on('connect', () => { online.connected = true; online.err = ''; sock.emit('hello', { pid: player.id, name: player.name, token: auth.token }); flushReports(); sock.emit('getRanking'); onlineRerender(); });
   sock.on('disconnect', () => { online.connected = false; online.room = null; onlineRerender(); });
   sock.on('me', m => { online.me = m; if (m.name && m.name !== player.name) { player.name = m.name; savePlayer(); } onlineRerender(); });
   sock.on('ranking', l => { online.ranking = l; onlineRerender(); });
@@ -2197,9 +2198,20 @@ function connectOnline() {
   sock.on('vsResult', res => { online.lastVs = res; sock.emit('getRanking'); onlineRerender(); });
 }
 // 馬券の成績をランキングへ(対戦レースの馬券も含む)
+// つながっていない間の分は端末に貯めておき、つながったときにまとめて送る
+let pendingReports = [];
+try { pendingReports = JSON.parse(localStorage.getItem('blockhorse_reports') || '[]'); if (!Array.isArray(pendingReports)) pendingReports = []; } catch (e) { pendingReports = []; }
+const savePending = () => { try { localStorage.setItem('blockhorse_reports', JSON.stringify(pendingReports.slice(-200))); } catch (e) {} };
 function reportBets(bet, pay, mine) {
-  if (!sock || !online.connected || !mine.length) return;
-  sock.emit('report', { bet, pay, hits: mine.filter(b => b.hit).length, n: mine.length, best: Math.max(0, ...mine.map(b => b.p)) });
+  if (!mine.length) return;
+  pendingReports.push({ bet, pay, hits: mine.filter(b => b.hit).length, n: mine.length, best: Math.max(0, ...mine.map(b => b.p)) }); savePending();
+  flushReports();
+}
+function flushReports() {
+  if (!sock || !online.connected || !pendingReports.length) return;
+  const list = pendingReports; pendingReports = []; savePending();
+  for (const r of list) sock.emit('report', r);
+  sock.emit('getRanking');
 }
 // 対戦に出す馬のデータ(見た目・能力だけ。引退馬なので調子は普通で固定)
 const horseForVs = h => h && ({ id: h.id, name: h.name, style: h.style, coat: h.coat, mane: h.mane, silk: h.silk, socks: h.socks, blaze: h.blaze, st: h.st, cond: 2, coatName: h.coatName, sex: h.sex });
