@@ -12,7 +12,14 @@
 <meta name="apple-mobile-web-app-title" content="ブロック馬">
 <meta name="theme-color" content="#5e3d22">
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:#9cc8ee;font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;background:#9cc8ee}
+#app{position:fixed;inset:0;background:#9cc8ee}
+/* PC・タブレットではスマホと同じ縦長の画面を中央に置く。transformを付けると中のfixed要素が#app基準になる */
+@media (min-width:640px){
+  body{background:#24401f;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 2px,transparent 2px 28px),radial-gradient(ellipse at 50% 0%,#3d6b36,#1f3a1b 70%)}
+  #app{left:50%;width:min(560px,100vw);transform:translateX(-50%);box-shadow:0 0 0 1px rgba(0,0,0,.35),0 0 60px rgba(0,0,0,.55);overflow:hidden}
+}
+html,body{font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 canvas{display:block}
 #hud{position:fixed;left:8px;top:8px;background:rgba(10,20,30,.72);color:#fff;border-radius:10px;padding:7px 10px;font-size:12px;min-width:150px;pointer-events:none}
 #hud .row{display:flex;gap:5px;align-items:center;line-height:1.32;white-space:nowrap;font-size:11px}
@@ -659,6 +666,7 @@ button.main{background:#2ecc71;color:#fff}
 </style>
 </head>
 <body>
+<div id="app">
 <div id="hud"></div>
 <div id="info"></div>
 <div id="center"></div>
@@ -707,17 +715,19 @@ function tp(s, d) {
 }
 
 // ================= 基本セットアップ =================
+const appEl = document.getElementById('app');
+const appW = () => appEl.clientWidth || innerWidth;          // PCでは中央カラムの幅、スマホでは画面幅
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(appW(), innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.insertBefore(renderer.domElement, document.body.firstChild);   // 3Dは一番奥に(上に重なるUIを隠さない)
+appEl.insertBefore(renderer.domElement, appEl.firstChild);   // 3Dは一番奥に(上に重なるUIを隠さない)
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9cc8ee);
 scene.fog = new THREE.Fog(0x9cc8ee, 320, 1500);
-const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.5, 2500);
+const camera = new THREE.PerspectiveCamera(40, appW() / innerHeight, 0.5, 2500);
 
 const hemi = new THREE.HemisphereLight(0xe6f2ff, 0x4f6b3a, 0.8); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1dc, 0.85);
@@ -2990,10 +3000,11 @@ function fitPanel() {
   body.scrollTop = 0;
 }
 function refreshView() {
-  const detail = stableOpen && stableView === 'detail' && stableEl.classList.contains('half');
+  // 調教中は放牧地(detail)より調教ビューの高さを優先する(PCで下にすき間が出ないように)
+  const detail = !trainOpen && stableOpen && stableView === 'detail' && stableEl.classList.contains('half');
   const f = trainOpen ? 0.58 : betSheet.classList.contains('open') ? 0.42 : 1;
-  const hh = loginView ? innerHeight : detail ? pastureH() : trainOpen ? trainViewHeight() : Math.round(innerHeight * f);
-  renderer.setSize(innerWidth, hh);
+  const hh = loginView ? innerHeight : trainOpen ? trainViewHeight() : detail ? pastureH() : Math.round(innerHeight * f);
+  renderer.setSize(appW(), hh);
   // 厩舎の詳細では、上の固定メニューの下に放牧地の3Dを置く
   const shd = detail && stableEl.querySelector('.shd');
   Object.assign(renderer.domElement.style, { position: 'fixed', left: '0px', top: (shd && !loginView ? shd.offsetHeight : 0) + 'px' });
@@ -3001,7 +3012,7 @@ function refreshView() {
   // 3Dのすぐ下から下のパネルを始めて、すき間を作らない
   if (trainOpen) trainEl.style.top = 'auto';
   if (betSheet.classList.contains('open')) betSheet.style.top = hh + 'px';
-  for (const c of [camera, pCam, trainObj && trainObj.cam].filter(Boolean)) { c.aspect = innerWidth / hh; c.updateProjectionMatrix(); }
+  for (const c of [camera, pCam, trainObj && trainObj.cam].filter(Boolean)) { c.aspect = appW() / hh; c.updateProjectionMatrix(); }
 }
 
 // ================= 実況(字幕) =================
@@ -3244,11 +3255,12 @@ function loop() {
   updateHUD(rdt, order, lead);
   if (race.online && betSheet.classList.contains('open')) { const t = document.getElementById('betTimer'); if (t) t.textContent = Math.max(0, Math.ceil((online.betEnd - Date.now()) / 1000)); }
   if (loginView) { updateLoginCam(rdt); renderer.render(scene, camera); }
-  else if (trainOpen) { updateTraining(rdt); renderer.render(trainObj.scene, trainObj.cam); }
+  else if (trainOpen) { if (Math.abs(renderer.domElement.clientHeight - trainViewHeight()) > 2) refreshView(); updateTraining(rdt); renderer.render(trainObj.scene, trainObj.cam); }   // パネルの高さが後から確定しても映像をぴったり合わせる
   else if (stableOpen) { if (stableView === 'detail' && stableEl.classList.contains('half')) { updatePasture(rdt); renderer.render(pScene, pCam); } }
   else renderer.render(scene, camera);
 }
 loop();
 </script>
+</div>
 </body>
 </html>
