@@ -1793,7 +1793,7 @@ function applySaveData(d) {
     if (!h.wins) { h.wins = {}; if (h.cls >= 2) h.wins[1] = 1; if (h.cls >= 3) h.wins[2] = 1; if (h.cls >= 6) h.wins[5] = 1; h.yearG1 = 0; }
     if (h.act && (h.act.type === 'train' || h.act.type === 'rest')) h.act.type = 'none';
     if (!h.cap) { h.cap = {}; for (const k of CORE_KEYS) h.cap[k] = Math.max(h.st[k], Math.min(GEN1_CAP_MAX, h.st[k] + 10)); h.gen = h.gen || 1; }
-    for (const k of APT_KEYS) h.cap[k] = 100;
+    for (const k of APT_KEYS) h.cap[k] = NO_CAP;
     if (!h.sex) h.sex = Math.random() < 0.5 ? '牡' : '牝';
     if (h.act && h.act.stat === 'cond') h.act.stat = 'spd';              // 調子ケアは廃止             // 旧データに性別を付与
   });
@@ -1801,7 +1801,7 @@ function applySaveData(d) {
   if (typeof game.btix !== 'object' || !game.btix) game.btix = { 3: +game.btix || 0 };   // 旧データの券はG3券に
 }
 const randPick = a => a[Math.floor(Math.random() * a.length)];
-const clampStat = v => Math.max(10, Math.min(100, v));
+const clampStat = v => Math.max(10, v);                        // 下限だけ。上は馬ごとの潜在能力で決まる
 function makeHorse(L, special) {
   const st = {};
   for (const k of ['spd', 'sta', 'brs', 'gut']) st[k] = clampStat(L + 5 * randn());
@@ -1823,12 +1823,13 @@ const GEN1_CAP_MAX = 66, STUD_CAP_MAX = 68, BREED_FEE = 3000;
 function gen1Caps(st, L) {
   const cap = {};
   for (const k of CORE_KEYS) cap[k] = Math.max(st[k], Math.min(GEN1_CAP_MAX, L + 18 + 4 * randn()));
-  for (const k of APT_KEYS) cap[k] = 100;
+  for (const k of APT_KEYS) cap[k] = NO_CAP;
   return cap;
 }
-// 成長の上限は廃止(2026-11)。すべての能力は100まで鍛えられる。capのデータ自体は配合の計算用に残している
-const capOf = () => 100;
-const atCap = () => false;
+// 能力に「100」という天井はない。馬ごとの潜在能力(cap)だけが上限で、世代を重ねると100を超えていく
+const NO_CAP = 9999;
+const capOf = (h, k) => h.cap && h.cap[k] != null ? h.cap[k] : NO_CAP;
+const atCap = (h, k) => k !== 'cond' && h.st[k] >= capOf(h, k) - 0.5;
 const avgCap = h => CORE_KEYS.slice(0, 4).reduce((a, k) => a + capOf(h, k), 0) / 4;
 // 実績ボーナス(1頭あたり最大3)：G2・G3勝ち1回0.25(4回まで)、G1勝ち1回0.5(4回まで)、海外G1勝ち+1、レジェンド勝ち+1.5
 // 上限まで鍛えてG1を勝ち続けると、だいたい5世代目でレジェンドを勝てる水準(上限95前後)に届く
@@ -1841,12 +1842,12 @@ const capGain = (a, b) => 2.5 + achOf(a) + achOf(b);            // 子の上限�
 function breedFoal(a, b) {
   const h = makeHorse(20, false), g = capGain(a, b);
   for (const k of CORE_KEYS) {
-    h.cap[k] = Math.max(20, Math.min(100, (capOf(a, k) + capOf(b, k)) / 2 + g + 1.5 * randn()));
+    h.cap[k] = Math.max(20, (capOf(a, k) + capOf(b, k)) / 2 + g + 1.5 * randn());   // 親の平均＋α。100を超えてもいい
     h.st[k] = Math.max(10, Math.min(h.cap[k] - 3, 0.6 * (a.st[k] + b.st[k]) / 2 + 3 * randn()));
   }
   for (const k of APT_KEYS) {                                      // 健康・適性は 親の平均30% ＋ ランダム70%
     h.st[k] = clampStat(0.3 * (a.st[k] + b.st[k]) / 2 + 0.7 * lowStat());
-    h.cap[k] = 100;
+    h.cap[k] = NO_CAP;
   }
   const cs = Math.random() < 0.5 ? a : b;
   if (Math.random() < 0.7 && cs.coatName) { const ct = COAT_TYPES.find(c => c.n === cs.coatName); applyCoat(h, ct || randCoat(false)); }
@@ -2614,7 +2615,7 @@ function trainNow(h) {
     for (const k of tr.ks || [a.stat]) {
       const before = h.st[k];
       const up = (0.6 + Math.random() * 0.6) * g.gain * (tr.f || 1)   // トレセン(2000円)で鍛え続けると、G3級の素質の初代が数年かけて「G3をたまに勝てる」くらいになる伸び
-         * Math.max(0.12, 1 - before / 105) * (great ? 2.5 : 1) * (tired ? 0.6 : 1);   // 高いほど伸びにくく、90超えはじわじわ。疲れていると伸びが鈍る
+         * Math.max(0.35, 1 - before / 140) * (great ? 2.5 : 1) * (tired ? 0.6 : 1);   // 高いほど伸びにくい。疲れていると伸びが鈍る
       h.st[k] = Math.min(Math.max(before, capOf(h, k)), clampStat(before + up)); h.grow[k] = (h.grow[k] || 0) + 1;
     }
     item = { h, t: tr, grade: a.grade, ok, great, rate };

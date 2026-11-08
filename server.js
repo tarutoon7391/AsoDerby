@@ -112,7 +112,7 @@ const emitRoom = r => io.to(r.code).emit('room', roomView(r));
 // 馬データは見た目と能力だけ受け取る(余計なものは捨てる)
 function cleanHorse(h) {
   if (!h || typeof h !== 'object' || !h.st) return null;
-  const st = {}; for (const k of ['spd', 'sta', 'brs', 'gut', 'hlt', 'turf', 'dirt', 'rain']) st[k] = Math.max(0, Math.min(100, +h.st[k] || 0));
+  const st = {}; for (const k of ['spd', 'sta', 'brs', 'gut', 'hlt', 'turf', 'dirt', 'rain']) st[k] = Math.max(0, Math.min(999, +h.st[k] || 0));   // 能力に100の天井はない
   return { name: cleanName(h.name) || '名無し', style: String(h.style || '先行').slice(0, 8), coat: +h.coat || 0, mane: +h.mane || 0, silk: +h.silk || 0,
     socks: Array.isArray(h.socks) ? h.socks.slice(0, 4).map(String) : [], blaze: !!h.blaze, st, cond: Math.max(0, Math.min(4, +h.cond || 0)),
     coatName: String(h.coatName || '').slice(0, 8), sex: h.sex === '牝' ? '牝' : '牡' };
