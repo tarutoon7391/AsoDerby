@@ -1816,7 +1816,7 @@ function makeHorse(L, special) {
 }
 // ===== 潜在能力(成長の上限)と継承 =====
 // 1代目(セリ・ガチャ)の上限は最大66。配合で親の上限＋α の子が生まれ、5世代ほど重ねるとレジェンド級(80前後)に届く
-// 基本4能力は世代ごとの上限あり。健康・芝・ダート・雨耐性は上限なしで、低めから自分で育てる(子には30%だけ受け継がれる)
+// 基本4能力は世代ごとの上限あり。健康・芝・ダート・雨耐性は上限なしで、低めから自分で育てる(子には親の平均の50%が受け継がれる)
 const CORE_KEYS = ['spd', 'sta', 'brs', 'gut'], APT_KEYS = ['hlt', 'turf', 'dirt', 'rain'], CAP_KEYS = [...CORE_KEYS, ...APT_KEYS];
 const lowStat = () => 15 + Math.random() * 25;                 // 生まれつきの健康・適性(E〜C)
 const GEN1_CAP_MAX = 66, STUD_CAP_MAX = 68, BREED_FEE = 3000;
@@ -1845,8 +1845,8 @@ function breedFoal(a, b) {
     h.cap[k] = Math.max(20, (a.st[k] + b.st[k]) / 2 + g + 1.5 * randn());        // 親の「実際の能力」の平均＋α。鍛えた親からしか親超えの子は生まれない
     h.st[k] = Math.max(10, Math.min(h.cap[k] - 3, 0.6 * (a.st[k] + b.st[k]) / 2 + 3 * randn()));
   }
-  for (const k of APT_KEYS) {                                      // 健康・適性は 親の平均30% ＋ ランダム70%
-    h.st[k] = clampStat(0.3 * (a.st[k] + b.st[k]) / 2 + 0.7 * lowStat());
+  for (const k of APT_KEYS) {                                      // 健康・適性は 親の平均50% ＋ ランダム50%
+    h.st[k] = clampStat(0.5 * (a.st[k] + b.st[k]) / 2 + 0.5 * lowStat());
     h.cap[k] = NO_CAP;
   }
   const cs = Math.random() < 0.5 ? a : b;
