@@ -461,7 +461,7 @@ button.main{background:#2ecc71;color:#fff}
 #stable .main.sm{padding:8px 12px;font-size:12px;flex:none}
 #stable .onerr{background:#ffe3e0;color:#9b2c20;border-radius:9px;padding:7px 10px;font-size:12px;margin-bottom:8px}
 #stable .rsort{display:flex;gap:5px;margin-bottom:6px}
-#stable .rsort button{flex:1;padding:7px 4px;font-size:12px;background:#f3e3d0;color:#6b4a2a;border:1px solid #e1cda8}
+#stable .rsort button{flex:1;padding:7px 2px;font-size:11px;white-space:nowrap;letter-spacing:-.3px;background:#f3e3d0;color:#6b4a2a;border:1px solid #e1cda8}
 #stable .rsort button.on{background:#8b5a2b;color:#fff;border-color:#8b5a2b}
 #stable .rsort .rf{flex:none;width:38px}
 #stable .rrow{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e1cda8;border-radius:10px;padding:7px 10px;margin-bottom:5px}
@@ -1793,7 +1793,18 @@ function resetSave() {
   money = 20000; selId = -1; stableView = 'list'; stableTab = 'stable'; breedSel = []; schedSel = 0; gachaResult = null;
   refreshSale(); saveAll(); renderStable();
 }
-function saveAll() { try { localStorage.setItem('blockhorse_save', JSON.stringify({ ...game, money })); } catch (e) {} pushSave(); }
+function saveAll() { try { localStorage.setItem('blockhorse_save', JSON.stringify({ ...game, money })); } catch (e) {} pushSave(); sendStats(); }
+// ランキング用：G1・レジェンドの累計勝利数と、所持馬(現役＋引退)で一番稼いだ馬
+function myStats() {
+  const all = [...(game.horses || []), ...(game.retired || [])];
+  const top = all.reduce((b, h) => !b || (h.prize || 0) > (b.prize || 0) ? h : b, null);
+  return { g1: game.g1Total || 0, lg: game.lgTotal || 0, top: top && top.prize > 0 ? { name: top.name, prize: top.prize } : null };
+}
+let statsT = 0;
+function sendStats() {
+  clearTimeout(statsT);
+  statsT = setTimeout(() => { if (typeof sock !== 'undefined' && sock && online.connected) sock.emit('stats', myStats()); }, 800);
+}
 function loadAll() {
   let d = null;
   try { d = JSON.parse(localStorage.getItem('blockhorse_save') || 'null'); } catch (e) {}
@@ -1804,6 +1815,12 @@ function applySaveData(d) {
   if (d && typeof d === 'object') { d = { ...d }; money = typeof d.money === 'number' ? d.money : 20000; delete d.money; game = Object.assign(game, d); }
   else money = 20000;
   if (!Array.isArray(game.sale)) game.sale = [];
+  // 累計勝利数がない古いデータは、いまいる馬の勝ち数から作る
+  if (game.g1Total == null || game.lgTotal == null) {
+    const all = [...(game.horses || []), ...(game.retired || [])];
+    game.g1Total = all.reduce((a, h) => a + ((h.wins || {})[5] || 0) + ((h.wins || {})[6] || 0), 0);
+    game.lgTotal = all.reduce((a, h) => a + ((h.wins || {})[7] || 0), 0);
+  }
   if (!game.sale.length) refreshSale();
   [...game.horses, ...game.sale, ...game.retired].forEach(h => {
     if (!h.coatName) applyCoat(h, randCoat(false));                 // 旧データに毛色を付与
@@ -2194,7 +2211,7 @@ const onlineRerender = () => { if (stableOpen && stableTab === 'online') { const
 function connectOnline() {
   if (sock || typeof io === 'undefined') return;
   sock = io();
-  sock.on('connect', () => { online.connected = true; online.err = ''; sock.emit('hello', { pid: player.id, name: player.name, token: auth.token }); flushReports(); sock.emit('getRanking'); onlineRerender(); });
+  sock.on('connect', () => { online.connected = true; online.err = ''; sock.emit('hello', { pid: player.id, name: player.name, token: auth.token }); flushReports(); sock.emit('stats', myStats()); sock.emit('getRanking'); onlineRerender(); });
   sock.on('disconnect', () => { online.connected = false; online.room = null; onlineRerender(); });
   sock.on('me', m => { online.me = m; if (m.name && m.name !== player.name) { player.name = m.name; savePlayer(); } onlineRerender(); });
   sock.on('ranking', l => { online.ranking = l; onlineRerender(); });
@@ -2294,7 +2311,7 @@ function onlineGo() {
 function onlineHTML() {
   if (typeof io === 'undefined' || window.__noSock) return `<div class="onbox off"><b>🌐 オンライン機能はオンライン版でだけ使えます</b><small>Railwayなどで公開したURLから開くと、馬券ランキングと対戦が使えるようになります</small></div>`;
   if (!sock) connectOnline();
-  const sub = `<div class="isub">${[['rank', '🏆 馬券ランキング'], ['vs', '⚔️ 対戦']].map(([k, n]) => `<button data-on="sub" data-v="${k}" class="${onlineSub === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+  const sub = `<div class="isub">${[['rank', '🏆 ランキング'], ['vs', '⚔️ 対戦']].map(([k, n]) => `<button data-on="sub" data-v="${k}" class="${onlineSub === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
   const acct = auth.user ? `<div class="acct"><span>👤</span><b>${escO(auth.user.name)}</b><small>ID: ${escO(auth.user.uid)} ・ サーバー保存中</small><button data-on="logout">ログアウト</button></div>`
     : auth.server ? `<div class="acct guest"><span>👤</span><b>ゲスト（この端末だけ）</b><small>ログインすると牧場のデータが保存されます</small><button data-on="login">ログイン</button></div>` : '';
   const nameRow = acct + `<div class="onname"><span>${online.connected ? '🟢' : '🔴'}</span><input id="onName" type="text" maxlength="12" placeholder="プレイヤー名" value="${escO(player.name)}"><button class="main sm" data-on="name">保存</button></div>`;
@@ -2303,13 +2320,16 @@ function onlineHTML() {
   return sub + nameRow + (onlineSub === 'rank' ? rankingHTML() : vsHTML());
 }
 function rankingHTML() {
-  const S = online.rankSort, defs = { profit: ['通算収支', p => p.pay - p.bet, v => (v >= 0 ? '+' : '') + yen(v)], best: ['最高払戻', p => p.best || 0, yen], vs: ['対戦勝利', p => p.vsWins || 0, v => v + '勝'] };
-  const [label, val, fmt] = defs[S];
-  const list = [...online.ranking].filter(p => S === 'vs' ? p.vsRaces : p.n).sort((a, b) => val(b) - val(a));
+  const defs = { profit: ['通算収支', p => p.pay - p.bet, v => (v >= 0 ? '+' : '') + yen(v)], best: ['最高払戻', p => p.best || 0, yen],
+    g1: ['G1勝利', p => p.g1 || 0, v => v + '勝'], lg: ['レジェンド', p => p.lg || 0, v => v + '勝'], top: ['最強馬', p => p.top ? p.top.prize : 0, yen] };
+  if (!defs[online.rankSort]) online.rankSort = 'profit';
+  const S = online.rankSort, [label, val, fmt] = defs[S], bet = S === 'profit' || S === 'best';
+  const list = [...online.ranking].filter(p => bet ? p.n : S === 'top' ? p.top : p.st).sort((a, b) => val(b) - val(a));
   const myIdx = list.findIndex(p => p.pid === player.id);
-  const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><b>${escO(p.name)}</b><small>${S === 'vs' ? `${p.vsRaces || 0}戦` : `${p.n}点 ・ 的中${p.hits}`}</small><em>${fmt(val(p))}</em></div>`;
+  const sub = p => bet ? `${p.n}点 ・ 的中${p.hits}` : S === 'top' ? `🐎 ${escO(p.top.name)}` : `${p.top ? `最強馬 ${escO(p.top.name)}` : ''}`;
+  const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><b>${escO(p.name)}</b><small>${sub(p)}</small><em>${fmt(val(p))}</em></div>`;
   return `<div class="rsort">${Object.entries(defs).map(([k, [n]]) => `<button data-on="sort" data-v="${k}" class="${S === k ? 'on' : ''}">${n}</button>`).join('')}<button data-on="refresh" class="rf">↻</button></div>
-    <div class="hint">${S === 'vs' ? '対戦で自分の馬がプレイヤーの中で一番先にゴールすると1勝' : '普段のレースで買った馬券の成績が自動で集計されます'}</div>
+    <div class="hint">${bet ? '普段のレースで買った馬券の成績が自動で集計されます' : S === 'top' ? '所持馬(現役・引退)の中で一番賞金を稼いだ馬と、その獲得賞金' : S === 'g1' ? '自分の馬が勝ったG1(海外G1を含む)の通算勝利数' : '自分の馬が勝ったレジェンドカップの通算勝利数'}</div>
     ${list.length ? list.slice(0, 30).map(row).join('') : '<div class="empty">まだ記録がありません。馬券を買ってレースを観戦しよう</div>'}
     ${myIdx >= 30 ? `<div class="lb2">あなた</div>${row(list[myIdx], myIdx)}` : ''}`;
 }
@@ -2629,8 +2649,8 @@ function applyResult(h, pos, c, name) {
   let msg = `${h.name}：${wr.n} ${pos}着${prize ? `（賞金 ${yen(prize)}）` : ''}`;
   if (pos === 1) {
     h.wins = h.wins || {}; h.wins[c] = (h.wins[c] || 0) + 1;
-    if (c === 5 || c === 6) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🏆G1制覇！（今年${h.yearG1}勝）`; }
-    if (c === 7) msg += ' 👑レジェンド制覇！';
+    if (c === 5 || c === 6) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🏆G1制覇！（今年${h.yearG1}勝）`; game.g1Total = (game.g1Total || 0) + 1; }
+    if (c === 7) { msg += ' 👑レジェンド制覇！'; game.lgTotal = (game.lgTotal || 0) + 1; }
     if (BGACHAS[c]) { game.btix[c] = (game.btix[c] || 0) + 1; msg += ` 🎟${BGACHAS[c].n}ガチャ券ゲット`; }
   }
   game.log.push(msg);

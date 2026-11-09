@@ -44,8 +44,9 @@ function getPlayer(pid, name) {
   p.seen = Date.now();
   return p;
 }
-const pubStats = p => ({ pid: p.pid, name: p.name, bet: p.bet, pay: p.pay, hits: p.hits, n: p.n, best: p.best, vsWins: p.vsWins, vsRaces: p.vsRaces });
-const ranking = () => Object.values(players).filter(p => p.name && (p.n || p.vsRaces)).map(pubStats);
+const pubStats = p => ({ pid: p.pid, name: p.name, bet: p.bet, pay: p.pay, hits: p.hits, n: p.n, best: p.best, vsWins: p.vsWins, vsRaces: p.vsRaces,
+  st: !!p.st, g1: p.g1 || 0, lg: p.lg || 0, top: p.top || null });
+const ranking = () => Object.values(players).filter(p => p.name && (p.n || p.vsRaces || p.st)).map(pubStats);
 
 // ===== アカウント(ユーザーID・プレイヤー名・パスワード) =====
 // パスワードはscryptでハッシュ化して保存。ログインするとトークンを発行し、クライアントはそれを持って保存・読込する
@@ -146,6 +147,15 @@ io.on('connection', sock => {
     sock.data.pid = pid;
     const p = getPlayer(pid, tokPid ? (d.name || players[pid].name) : d.name); save();
     sock.emit('me', pubStats(p));
+  });
+  // G1・レジェンドの勝利数と最強馬(クライアントが保存のたびに送る)
+  sock.on('stats', d => {
+    if (!sock.data.pid || !d) return;
+    const p = getPlayer(sock.data.pid);
+    p.st = true; p.g1 = Math.max(0, Math.min(1e6, Math.floor(+d.g1 || 0))); p.lg = Math.max(0, Math.min(1e6, Math.floor(+d.lg || 0)));
+    const t = d.top && typeof d.top === 'object' ? d.top : null;
+    p.top = t && t.name ? { name: String(t.name).slice(0, 20), prize: Math.max(0, Math.min(1e13, Math.floor(+t.prize || 0))) } : null;
+    save();
   });
   sock.on('setName', name => {
     if (!sock.data.pid) return;
