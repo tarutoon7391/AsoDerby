@@ -438,6 +438,7 @@ button.main{background:#2ecc71;color:#fff}
 #stable .sched.w2{background:linear-gradient(180deg,#2b1f5c,#45307e);color:#efe6ff}
 #stable .sched.w2 .sct{color:#e8d8ff}
 #stable.w2 .shd{background:linear-gradient(180deg,#3a2a6a,#241a48)!important}
+#stable .rsort.w2 button.on{background:linear-gradient(135deg,#3a2a6a,#6a4bb0);border-color:#8a6cc4;color:#fff}
 #stable .rrow .seen{flex:none;font-size:9.5px;font-weight:700;color:#8a7a62;white-space:nowrap}
 #stable .rrow .seen.on{color:#2e9d4a}
 #stable .bfilter{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px}
@@ -1921,7 +1922,9 @@ function myStats() {
   const ace = f => { const h = all.reduce((b, x) => !b || f(x) > f(b) ? x : b, null); return h && f(h) > 0 ? { name: h.name, n: f(h) } : null; };
   const W = h => h.wins || {};
   return { g1: game.g1Total || 0, lg: game.lgTotal || 0, top: top && top.prize > 0 ? { name: top.name, prize: top.prize } : null,
-    g1h: ace(h => (W(h)[5] || 0) + (W(h)[6] || 0)), lgh: ace(h => W(h)[7] || 0) };
+    g1h: ace(h => (W(h)[5] || 0) + (W(h)[6] || 0)), lgh: ace(h => W(h)[7] || 0),
+    // 幻境(第2層)のランキング用。幻境に馬がいる人だけ載る
+    w2: hasW2(), g1x: game.g1x || 0, lgx: game.lgx || 0, g1xh: ace(h => (W(h)[13] || 0) + (W(h)[14] || 0)), lgxh: ace(h => W(h)[15] || 0) };
 }
 let statsT = 0;
 function sendStats() {
@@ -1943,6 +1946,11 @@ function applySaveData(d) {
     const all = [...(game.horses || []), ...(game.retired || [])];
     game.g1Total = all.reduce((a, h) => a + ((h.wins || {})[5] || 0) + ((h.wins || {})[6] || 0), 0);
     game.lgTotal = all.reduce((a, h) => a + ((h.wins || {})[7] || 0), 0);
+  }
+  if (game.g1x == null || game.lgx == null) {                       // 幻境の通算勝利数(古いデータはいまいる馬から作る)
+    const all = [...(game.horses || []), ...(game.retired || [])];
+    game.g1x = all.reduce((a, h) => a + ((h.wins || {})[13] || 0) + ((h.wins || {})[14] || 0), 0);
+    game.lgx = all.reduce((a, h) => a + ((h.wins || {})[15] || 0), 0);
   }
   if (!game.sale.length) refreshSale();
   [...game.horses, ...game.sale, ...game.retired].forEach(h => {
@@ -2532,15 +2540,21 @@ function onlineHTML() {
 }
 function rankingHTML() {
   const defs = { profit: ['通算収支', p => p.pay - p.bet, v => (v >= 0 ? '+' : '') + yen(v)], best: ['最高払戻', p => p.best || 0, yen],
-    g1: ['G1勝利', p => p.g1 || 0, v => v + '勝'], lg: ['レジェンド', p => p.lg || 0, v => v + '勝'], top: ['最強馬', p => p.top ? p.top.prize : 0, yen] };
+    g1: ['G1勝利', p => p.g1 || 0, v => v + '勝'], lg: ['レジェンド', p => p.lg || 0, v => v + '勝'],
+    g1x: ['幻G1勝利', p => p.g1x || 0, v => v + '勝'], lgx: ['幻境L', p => p.lgx || 0, v => v + '勝'], top: ['最強馬', p => p.top ? p.top.prize : 0, yen] };
+  // 幻境を表示している間は、G1・レジェンドの枠が幻境版に入れ替わる(幻境に馬がいる人だけのランキング)
+  const w2v = viewW() === 2, swap = { g1: 'g1x', lg: 'lgx', g1x: 'g1', lgx: 'lg' };
+  if (w2v !== (online.rankSort === 'g1x' || online.rankSort === 'lgx') && swap[online.rankSort]) online.rankSort = swap[online.rankSort];
   if (!defs[online.rankSort]) online.rankSort = 'profit';
-  const S = online.rankSort, [label, val, fmt] = defs[S], bet = S === 'profit' || S === 'best';
-  const list = [...online.ranking].filter(p => bet ? p.n : S === 'top' ? p.top : p.st).sort((a, b) => val(b) - val(a));
+  const tabs = w2v ? ['profit', 'best', 'g1x', 'lgx', 'top'] : ['profit', 'best', 'g1', 'lg', 'top'];
+  const S = online.rankSort, [label, val, fmt] = defs[S], bet = S === 'profit' || S === 'best', x2 = S === 'g1x' || S === 'lgx';
+  const list = [...online.ranking].filter(p => bet ? p.n : S === 'top' ? p.top : x2 ? p.w2 : p.st).sort((a, b) => val(b) - val(a));
   const myIdx = list.findIndex(p => p.pid === player.id);
-  const sub = p => bet ? `${p.n}点 ・ 的中${p.hits}` : S === 'top' ? `🐎 ${escO(p.top.name)}` : (h => h ? `🐎 ${escO(h.name)}（${h.n}勝）` : '')(S === 'g1' ? p.g1h : p.lgh);
+  const sub = p => bet ? `${p.n}点 ・ 的中${p.hits}` : S === 'top' ? `🐎 ${escO(p.top.name)}` : (h => h ? `🐎 ${escO(h.name)}（${h.n}勝）` : '')({ g1: p.g1h, lg: p.lgh, g1x: p.g1xh, lgx: p.lgxh }[S]);
   const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><div class="rmid"><b>${escO(p.name)}</b><small>${seenTag(p)}${sub(p) ? `<span class="rsub">${sub(p)}</span>` : ''}</small></div><em>${fmt(val(p))}</em></div>`;
-  return `<div class="rsort">${Object.entries(defs).map(([k, [n]]) => `<button data-on="sort" data-v="${k}" class="${S === k ? 'on' : ''}">${n}</button>`).join('')}<button data-on="refresh" class="rf">↻</button></div>
-    <div class="hint">${bet ? '普段のレースで買った馬券の成績が自動で集計されます' : S === 'top' ? '所持馬(現役・引退)の中で一番賞金を稼いだ馬と、その獲得賞金' : S === 'g1' ? '自分の馬が勝ったG1(海外G1を含む)の通算勝利数' : '自分の馬が勝ったレジェンドカップの通算勝利数'}</div>
+  return `<div class="rsort ${w2v ? 'w2' : ''}">${tabs.map(k => [k, defs[k]]).map(([k, [n]]) => `<button data-on="sort" data-v="${k}" class="${S === k ? 'on' : ''}">${n}</button>`).join('')}<button data-on="refresh" class="rf">↻</button></div>
+    <div class="hint">${bet ? '普段のレースで買った馬券の成績が自動で集計されます' : S === 'top' ? '所持馬(現役・引退)の中で一番賞金を稼いだ馬と、その獲得賞金' : S === 'g1' ? '自分の馬が勝ったG1(海外G1を含む)の通算勝利数' : S === 'lg' ? '自分の馬が勝ったレジェンドカップの通算勝利数'
+      : S === 'g1x' ? '🔮 幻境：自分の馬が勝った幻・G1(異界G1を含む)の通算勝利数。幻境に馬がいる人だけ' : '🔮 幻境：自分の馬が勝った幻境レジェンドの通算勝利数。幻境に馬がいる人だけ'}</div>
     ${list.length ? list.slice(0, 30).map(row).join('') : '<div class="empty">まだ記録がありません。馬券を買ってレースを観戦しよう</div>'}
     ${myIdx >= 30 ? `<div class="lb2">あなた</div>${row(list[myIdx], myIdx)}` : ''}`;
 }
@@ -2887,8 +2901,8 @@ function applyResult(h, pos, c, name) {
     h.wins = h.wins || {}; h.wins[c] = (h.wins[c] || 0) + 1;
     if (c === 5 || c === 6) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🏆G1制覇！（今年${h.yearG1}勝）`; game.g1Total = (game.g1Total || 0) + 1; }
     if (c === 7) { msg += ' 👑レジェンド制覇！'; game.lgTotal = (game.lgTotal || 0) + 1; if ((h.wins[7] || 0) >= 3) msg += ' ✨この馬の子は第2層「幻境」へ行けます'; }
-    if (c === 13 || c === 14) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🔮幻境G1制覇！（今年${h.yearG1}勝）`; }
-    if (c === 15) msg += ' 🌌幻境レジェンド制覇！';
+    if (c === 13 || c === 14) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🔮幻境G1制覇！（今年${h.yearG1}勝）`; game.g1x = (game.g1x || 0) + 1; }
+    if (c === 15) { msg += ' 🌌幻境レジェンド制覇！'; game.lgx = (game.lgx || 0) + 1; }
     if (BGACHAS[c]) { game.btix[c] = (game.btix[c] || 0) + 1; msg += ` 🎟${BGACHAS[c].n}ガチャ券ゲット`; }
   }
   game.log.push(msg);

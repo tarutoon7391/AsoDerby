@@ -49,7 +49,8 @@ function getPlayer(pid, name) {
 }
 const pubStats = p => ({ pid: p.pid, name: p.name, bet: p.bet, pay: p.pay, hits: p.hits, n: p.n, best: p.best, vsWins: p.vsWins, vsRaces: p.vsRaces,
   st: !!p.st, g1: p.g1 || 0, lg: p.lg || 0, top: p.top || null, g1h: p.g1h || null, lgh: p.lgh || null,
-  on: (onlineN[p.pid] || 0) > 0, ls: p.lastSeen || 0 });
+  on: (onlineN[p.pid] || 0) > 0, ls: p.lastSeen || 0,
+  w2: !!p.w2, g1x: p.g1x || 0, lgx: p.lgx || 0, g1xh: p.g1xh || null, lgxh: p.lgxh || null });
 // いま接続している人数(プレイヤーごと)。ランキングで「オンライン／最終ログイン」を出すのに使う
 const onlineN = {};
 let rankT = 0;
@@ -167,6 +168,8 @@ io.on('connection', sock => {
     p.top = t && t.name ? { name: String(t.name).slice(0, 20), prize: Math.max(0, Math.min(1e13, Math.floor(+t.prize || 0))) } : null;
     const ace = a => a && typeof a === 'object' && a.name ? { name: String(a.name).slice(0, 20), n: Math.max(0, Math.min(1e6, Math.floor(+a.n || 0))) } : null;
     p.g1h = ace(d.g1h); p.lgh = ace(d.lgh);
+    p.w2 = !!d.w2; p.g1x = Math.max(0, Math.min(1e6, Math.floor(+d.g1x || 0))); p.lgx = Math.max(0, Math.min(1e6, Math.floor(+d.lgx || 0)));
+    p.g1xh = ace(d.g1xh); p.lgxh = ace(d.lgxh);
     save();
   });
   sock.on('setName', name => {
