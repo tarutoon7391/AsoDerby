@@ -520,6 +520,20 @@ button.main{background:#2ecc71;color:#fff}
 #stable .tgrade.round .g4{background:conic-gradient(from 0deg,#ff6b9d,#ffd36b,#7cf0a5,#6bc8ff,#b48bff,#ff6b9d)!important;color:#fff!important;border:3px solid #fff!important;box-shadow:0 0 0 2px #b48bff,0 0 16px rgba(255,140,220,.8)!important;text-shadow:0 1px 3px rgba(0,0,0,.6);animation:dreamGlow 2.4s ease-in-out infinite alternate}
 #stable .tgrade.round .g4 em{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-style:normal;font-size:13px}
 @keyframes dreamGlow{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(40deg)}}
+#stable .tgwrap{display:flex;align-items:center;gap:4px;margin:8px 0 4px}
+#stable .tgwrap .tgrade.round{flex:1;margin:0;gap:3px}
+#stable .tgwrap .tgrade.round button{width:56px;height:56px;font-size:11px}
+#stable .tgpage{flex:none;width:34px;height:62px;padding:0;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  background:linear-gradient(180deg,#3a2a6a,#1b1238);color:#ffe9a8;border:2px solid #e8c24a;box-shadow:0 0 8px rgba(232,194,74,.5)}
+#stable .tgpage b{font-size:18px;line-height:1}
+#stable .tgpage small{font-size:8px;font-weight:900;line-height:1.15;opacity:1}
+#stable .tgwrap.adv .tgpage{background:#f3e3d0;color:#6b4a2a;border-color:#c9a77a;box-shadow:none}
+#stable .tgrade.round .g5{background:radial-gradient(circle at 35% 30%,#e0fbff,#5ad1e6 50%,#1b6f9a)!important;color:#fff!important;border:3px solid #bff4ff!important;box-shadow:0 0 12px rgba(90,209,230,.8)!important;text-shadow:0 1px 2px #0b3a52}
+#stable .tgrade.round .g6{background:radial-gradient(circle at 35% 30%,#ffd9e6,#e0457b 50%,#7a1038)!important;color:#fff5d6!important;border:3px solid #ffd36b!important;box-shadow:0 0 12px rgba(255,211,107,.8)!important;text-shadow:0 1px 2px #4a0820}
+#stable .tgrade.round .g7{background:radial-gradient(circle at 35% 30%,#fffbe0,#ffc93c 45%,#ff7a00)!important;color:#5a2500!important;border:3px solid #fff!important;box-shadow:0 0 0 2px #ff7a00,0 0 18px rgba(255,201,60,.95)!important}
+#stable .tgrade.round .g8{background:radial-gradient(circle at 50% 40%,#ffffff,#f6e7ff 35%,#9f7bff 70%,#3b1d8f)!important;color:#2a0f6e!important;border:3px solid #fff!important;box-shadow:0 0 0 2px #9f7bff,0 0 22px rgba(200,170,255,1)!important;animation:glow8 2s ease-in-out infinite}
+@keyframes glow8{50%{box-shadow:0 0 0 2px #ffd36b,0 0 28px rgba(255,230,160,1)}}
+#stable .tgrade.round .g5 em,#stable .tgrade.round .g6 em,#stable .tgrade.round .g7 em,#stable .tgrade.round .g8 em{position:absolute;top:-7px;left:50%;transform:translateX(-50%);font-style:normal;font-size:12px}
 #stable .tgrade.round button.on{transform:scale(1.12);outline:3px solid #6aa84f;outline-offset:2px}
 #stable .tgrade.round button:not(.on){opacity:.82}
 @keyframes twinkle{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
@@ -1301,18 +1315,21 @@ const COND = [
 let cond = [];
 const condIcon = i => { const c = COND[cond[i]]; return `<span class="arw" title="${c.n}" style="color:${c.c};transform:rotate(${c.a}deg)">➜</span>`; };
 // ================= ランク・ステータス・クラス =================
-const RANKS = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
-const RANK_V = [19, 30, 41, 60, 70, 79, 90, 97];               // ランク→能力値(基準に合わせて逆算)
-const RANK_C = ['#8e8e93', '#a2845e', '#34c759', '#0a84ff', '#bf5af2', '#ff9f0a', '#ff375f', '#ffd60a'];
-const rankOf = v => { let k = 0; for (let i = 1; i < RANKS.length; i++) if (v >= (RANK_V[i - 1] + RANK_V[i]) / 2) k = i; return k; };
+const RANKS = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS', 'Z', 'ZZ', 'ZZZ'];
+const RANK_V = [19, 30, 41, 60, 70, 79, 90, 97, 200, 300, 400];               // ランク→能力値(基準に合わせて逆算)
+const RANK_C = ['#8e8e93', '#a2845e', '#34c759', '#0a84ff', '#bf5af2', '#ff9f0a', '#ff375f', '#ffd60a',
+  'linear-gradient(135deg,#ff2d55,#5856d6)', 'linear-gradient(135deg,#ffd60a,#ff375f 50%,#bf5af2)', 'conic-gradient(from 45deg,#ff6b9d,#ffd36b,#7cf0a5,#6bc8ff,#b48bff,#ff6b9d)'];
+// ランクの境目：SSSまでは隣のランクとの中間、Z/ZZ/ZZZ は 200/300/400 ちょうど
+const RANK_T = RANK_V.map((v, i) => i === 0 ? -Infinity : i >= 8 ? v : (RANK_V[i - 1] + v) / 2);
+const rankOf = v => { let k = 0; for (let i = 1; i < RANKS.length; i++) if (v >= RANK_T[i]) k = i; return k; };
 const CLASSES = [
   { n: '新馬戦', a: 21.5 }, { n: '未勝利', a: 19.5 }, { n: 'OP', a: 33.5 }, { n: 'G3', a: 42 },
   { n: 'G2', a: 51.5 }, { n: '国内G1', a: 63.5 }, { n: '海外G1', a: 69.5 }, { n: 'レジェンド', a: 79 },
 ];
 const STATS = [['spd', '速', 'スピード'], ['sta', '持', 'スタミナ'], ['brs', '瞬', '瞬発力'], ['gut', '根', '根性'],
   ['hlt', '健', '健康'], ['turf', '芝', '芝'], ['dirt', 'ダ', 'ダート'], ['rain', '雨', '雨耐性']];
-const APT_ADJ = [-18, -12, -7, -3, 0, 2, 4, 6];                 // 芝/ダート適性による能力値補正(E〜SSS)
-const RAIN_ADJ = [-10, -7, -4, -2, 0, 2, 3, 5];                 // 雨耐性(不良で全部効く)
+const APT_ADJ = [-18, -12, -7, -3, 0, 2, 4, 6, 7, 8, 9];                 // 芝/ダート適性による能力値補正(E〜SSS)
+const RAIN_ADJ = [-10, -7, -4, -2, 0, 2, 3, 5, 6, 7, 8];                 // 雨耐性(不良で全部効く)
 const DIST_W = { spd: 0.25, sta: 0.25, brs: 0.25, gut: 0.25 };  // 1200mの重み(4つ均等。他の距離は今後決める)
 const TAU = 6.5;                                                // 能力値10差で強さ約4.7倍
 const NPC_SHIFT = 2.4;                                          // NPCの適性補正の平均分を戻す
@@ -1765,7 +1782,13 @@ const GRADES = [
   { n: '高級', fac: '外厩', cost: 8000, rate: 1.0, gain: 2.2 },
   { n: '最高級', fac: '海外施設', cost: 30000, rate: 1.25, gain: 3.0 },
   { n: '至高', fac: '夢の牧場', cost: 100000, rate: 1.5, gain: 4.2 },
+  // 上級調教：お金が余っている人向け。値段のわりに伸びはゆるやか
+  { n: '極', fac: '天空厩舎', cost: 500000, rate: 1.6, gain: 4.7, adv: true },
+  { n: '王', fac: '王家牧場', cost: 1000000, rate: 1.7, gain: 5.1, adv: true },
+  { n: '神', fac: '伝説の地', cost: 5000000, rate: 1.8, gain: 5.5, adv: true },
+  { n: '天', fac: '神域', cost: 10000000, rate: 2.0, gain: 5.9, adv: true },
 ];
+let trainAdv = null;                                              // 調教グレードの表示ページ(null=選択中の段に合わせる)
 const GACHA_COST = 3000;
 const SALARY = 500;                                              // 毎週もらえる給料
 const GACHA = [
@@ -1937,7 +1960,7 @@ function setRunnerHorse(i, o) {
   r.o = o; r.look = o.name; r.h = new Horse(o, i + 1, true); scene.add(r.h.root);
 }
 const COND_CARE_RATE = [100, 100, 100, 100, 100]; // 調子ケアも必ず成功
-const GREAT_P = [0.12, 0.16, 0.22, 0.3, 0.4]; // 大成功になる確率(並〜至高)
+const GREAT_P = [0.12, 0.16, 0.22, 0.3, 0.4, 0.43, 0.46, 0.49, 0.52]; // 大成功になる確率(並〜神域)
 // トレーニングは必ず成功。1回の伸びは施設で決まり、能力が高いほど伸びにくい(疲れていると伸びが鈍る)
 const trainRate = () => 100;                    // 失敗はなし。施設が良いほど1回の伸びが大きい
 // 1年52週のローテーション(JRAの年間カレンダーに沿った史実のレース名・開催場・芝ダート)
@@ -2069,7 +2092,10 @@ function horseCard(h) {
       else body = `<div class="tdh"><button class="tback" data-tlist>‹ 一覧</button><span class="ti">${TRAIN_ICON[t.k]}</span><b>${t.n}</b>
         <div class="tright"><div>${a.stat === 'cond' ? `調子 ${condTxt(h)}` : t.ks || HIDDEN_STATS.has(a.stat) ? `${t.ks && t.ks.length === 4 ? '基本能力すべて' : statName(a.stat)}を鍛える` : `${statName(a.stat)} ${rankChip(h.st[a.stat])} ${Math.round(h.st[a.stat])}`}</div></div></div>
       <div class="tdesc">${TRAIN_DESC[t.k]}</div>
-      <div class="tgrade round">${GRADES.map((x, gi) => `<button data-tgrade="${gi}" data-id="${h.id}" class="g${gi} ${a.grade === gi ? 'on' : ''}">${gi === 3 ? '<em>✦</em>' : gi === 4 ? '<em>👑</em>' : ''}<span>${x.fac}</span><small>${yen(x.cost)}</small></button>`).join('')}</div>
+      ${(() => { const adv = trainAdv == null ? !!g.adv : trainAdv;
+        const btn = (x, gi) => `<button data-tgrade="${gi}" data-id="${h.id}" class="g${gi} ${a.grade === gi ? 'on' : ''}">${gi === 3 ? '<em>✦</em>' : gi === 4 ? '<em>👑</em>' : gi >= 5 ? `<em>${['💎', '🏰', '🌟', '⛩️'][gi - 5]}</em>` : ''}<span>${x.fac}</span><small>${x.cost >= 5e5 ? x.cost / 1e4 + '万円' : yen(x.cost)}</small></button>`;
+        const list = GRADES.map((x, gi) => [x, gi]).filter(([x]) => !!x.adv === adv);
+        return `<div class="tgwrap ${adv ? 'adv' : ''}">${adv ? '<button class="tgpage" data-tadv="0"><b>‹</b><small>基本<br>調教へ</small></button>' : ''}<div class="tgrade round">${list.map(([x, gi]) => btn(x, gi)).join('')}</div>${adv ? '' : '<button class="tgpage" data-tadv="1"><small>上級<br>調教へ</small><b>›</b></button>'}</div>`; })()}
             <button class="main go" data-asktrain="${h.id}" ${money < g.cost ? 'disabled' : ''}>${TRAIN_OF[a.stat].n}（${g.fac}）を実行 ・ ${yen(g.cost)}</button>`;
     }
   } else if (detailTab === 'rest') {
@@ -2600,6 +2626,7 @@ stableEl.addEventListener('click', ev => {
   else if (d.tstat && h) { h.act.stat = d.tstat; trainDetail = true; }
   else if (d.tlist !== undefined) trainDetail = false;
   else if (d.tgrade && h) h.act.grade = +d.tgrade;
+  else if (d.tadv !== undefined) trainAdv = d.tadv === '1';
   else if (d.retire) {
     const x = game.horses.find(y => y.id === +d.retire);
     pendingAsk = { tag: '🌾 引退', title: `${x.name} を引退させる`, q: `戦績 ${x.rec.join('-')} ・ 獲得 ${yen(x.prize)}<br><b>引退すると元に戻せません。</b>本当に引退させますか？`, ok: '引退させる',
@@ -3002,7 +3029,7 @@ const TALK = {
 const pickTalk = k => TALK[k][Math.floor(Math.random() * TALK[k].length)];
 const CAP_TALK = ['{s}はもうこれ以上伸びそうにないな…', 'この馬の{s}は、ここらが限界かもしれん', '{s}はもう十分だ。他を鍛えたほうがいいな', '{s}はこれで完成だな。もう伸びしろはなさそうだ'];
 function statBar(before, after) {
-  const r = rankOf(after), nextV = r < RANKS.length - 1 ? (RANK_V[r] + RANK_V[r + 1]) / 2 : null;
+  const r = rankOf(after), nextV = r < RANKS.length - 1 ? RANK_T[r + 1] : null;
   return `<div class="rbar"><i class="base" style="width:${before}%"></i>${after > before ? `<i class="gain" style="left:${before}%;width:${after - before}%"></i>` : ''}</div>
     <div class="rnext">${nextV ? `次のランク ${rankChip(RANK_V[r + 1])} まで あと <b>${Math.max(1, Math.ceil(nextV - after))}</b>` : '最高ランク到達！'}</div>`;
 }
