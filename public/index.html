@@ -341,6 +341,14 @@ button.main{background:#2ecc71;color:#fff}
 #stable .nbox{background:#fffaf0;color:#4a3523;border:3px solid #8b5e3c}
 #stable .nrow input{border:2px solid #d9c3a0}
 #stable .cfbg{position:fixed;inset:0;background:rgba(60,40,20,.45);z-index:60;animation:fadeIn .2s}
+#stable .cfchk{display:flex;align-items:flex-start;gap:8px;margin:-2px 0 10px;padding:8px 10px;border-radius:10px;background:#f3e6d2;border:1.5px solid #e1cda8;cursor:pointer;text-align:left}
+#stable .cfchk input{width:20px;height:20px;margin:1px 0 0;accent-color:#2e9d4a;flex:none}
+#stable .cfchk span{display:flex;flex-direction:column;gap:2px}
+#stable .cfchk b{font-size:13px;color:#4a3518}
+#stable .cfchk small{font-size:10px;opacity:.7;line-height:1.35}
+#stable .autobar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px;padding:6px 10px;border-radius:10px;background:#e6f4ea;border:1.5px solid #34c759;font-size:12px}
+#stable .autobar button{flex:none;padding:4px 12px;border-radius:8px;font-size:12px;font-weight:800;background:#fff;border:1.5px solid #c9a77a;color:#6b4a2a}
+#stable .autot{font-size:10px;font-weight:900;color:#1f7a3a;background:#dff3e5;border-radius:6px;padding:1px 6px}
 #stable .cfsheet{position:fixed;left:0;right:0;bottom:0;z-index:61;background:#fffaf0;border-top:6px solid #8b5e3c;border-radius:20px 20px 0 0;padding:14px 16px calc(16px + env(safe-area-inset-bottom));text-align:center;box-shadow:0 -8px 24px rgba(60,40,20,.35);animation:slideUp .28s cubic-bezier(.2,.9,.3,1.1)}
 #stable .cfh{display:inline-block;background:#6aa84f;color:#fff;border-radius:20px;padding:3px 14px;font-size:12px;font-weight:800;margin-bottom:8px}
 #stable .cfr{display:flex;justify-content:center;align-items:center;gap:8px;font-size:18px;margin-bottom:6px}
@@ -2180,7 +2188,7 @@ const stableEl = document.getElementById('stable');
 
 function horseRow(h) {
   return `<div class="hrow" data-sel="${h.id}">
-    <div class="hr1">${sexMark(h)}<b>${h.name}</b><span>${h.sex || ''}${h.age}歳</span>${(h.gen || 1) > 1 ? `<span class="genb">${h.gen}代目</span>` : ''}<span class="cls">${clsName(h)}</span>${h.injured ? '<span class="injt">負傷</span>' : ''}${h.trained ? '<span class="tag">トレ済</span>' : ''}${h.rested ? '<span class="tag">休養済</span>' : ''}${h.act.type === 'race' ? '<span class="tag r">出走予定</span>' : ''}<span class="arrow">›</span></div>
+    <div class="hr1">${sexMark(h)}<b>${h.name}</b><span>${h.sex || ''}${h.age}歳</span>${(h.gen || 1) > 1 ? `<span class="genb">${h.gen}代目</span>` : ''}<span class="cls">${clsName(h)}</span>${h.injured ? '<span class="injt">負傷</span>' : ''}${h.auto ? '<span class="autot">🔁 自動</span>' : ''}${h.trained ? '<span class="tag">トレ済</span>' : ''}${h.rested ? '<span class="tag">休養済</span>' : ''}${h.act.type === 'race' ? '<span class="tag r">出走予定</span>' : ''}<span class="arrow">›</span></div>
     <div class="hpb"><span>体力</span><div class="bar"><i style="width:${h.hp}%;background:${h.hp > 60 ? '#34c759' : h.hp > 30 ? '#ff9f0a' : '#ff3b30'}"></i></div><span>${Math.round(h.hp)}</span></div>
     ${statValLine(h.st)}</div>`;
 }
@@ -2241,6 +2249,7 @@ function horseCard(h) {
         const list = GRADES.map((x, gi) => [x, gi]).filter(([x]) => !!x.adv === adv);
         const canAdv = hw(h) === 2;                                   // 上級調教は第2層(幻境)の馬だけ
         return `<div class="tgwrap ${adv ? 'adv' : ''}">${adv ? '<button class="tgpage" data-tadv="0"><b>‹</b><small>基本<br>調教へ</small></button>' : ''}<div class="tgrade round">${list.map(([x, gi]) => btn(x, gi)).join('')}</div>${adv || !canAdv ? '' : '<button class="tgpage" data-tadv="1"><small>上級<br>調教へ</small><b>›</b></button>'}</div>`; })()}
+            ${h.auto ? `<div class="autobar"><span>🔁 毎週自動：<b>${TRAIN_OF[h.auto.stat].n}（${GRADES[h.auto.grade].fac}）</b></span><button data-autooff="${h.id}">解除</button></div>` : ''}
             <button class="main go" data-asktrain="${h.id}" ${money < g.cost ? 'disabled' : ''}>${TRAIN_OF[a.stat].n}（${g.fac}）を実行 ・ ${yen(g.cost)}</button>`;
     }
   } else if (detailTab === 'rest') {
@@ -2737,6 +2746,7 @@ function renderStable() {
   <nav class="snav">${detailSel ? detailNav(detailSel) : [['stable', '🏠', '厩舎'], ['sale', '🔨', 'セリ'], ['gacha', '🎰', 'ガチャ'], ['inherit', '🧬', '継承'], ['online', '🌐', 'オンライン']].map(([k, ic, n]) => `<button data-stab="${k}" class="${stableTab === k ? 'on' : ''}"><span>${ic}</span>${n}</button>`).join('')}</nav>
   ${naming ? namingHTML() : ''}
   ${pendingAsk ? `<div class="cfbg" data-ask="no"></div><div class="cfsheet">
+    ${pendingAsk.check ? `<label class="cfchk"><input type="checkbox" id="askChk" ${pendingAsk.check.on ? 'checked' : ''}><span><b>${pendingAsk.check.label}</b><small>${pendingAsk.check.sub}</small></span></label>` : ''}
     <div class="cfh">${pendingAsk.tag}</div>
     <div class="cfr"><b>${pendingAsk.title}</b></div>
     <div class="cfq">${pendingAsk.q}</div>
@@ -2790,8 +2800,12 @@ stableEl.addEventListener('click', ev => {
   if (el.id === 'skipChk') { skipRace = el.checked; renderStable(); return; }
   if (d.dtab) { detailTab = d.dtab; trainDetail = false; renderStable(); return; }
   if (d.asktrain) { const x = game.horses.find(y => y.id === +d.asktrain), g = GRADES[x.act.grade];
-    pendingAsk = { tag: '🏋️ トレーニング', title: `${TRAIN_OF[x.act.stat].n}（${g.fac}）`, q: `${x.name} に実行しますか？<br>費用 ${yen(g.cost)}`, ok: '実行する', run: () => trainNow(x) };
+    const same = !!(x.auto && x.auto.stat === x.act.stat && x.auto.grade === x.act.grade);
+    pendingAsk = { tag: '🏋️ トレーニング', title: `${TRAIN_OF[x.act.stat].n}（${g.fac}）`, q: `${x.name} に実行しますか？<br>費用 ${yen(g.cost)}`, ok: '実行する',
+      check: { on: same, label: '🔁 毎週このトレーニングを行う', sub: '週送りのとき自動で実行。体力が足りない週はお休み。手動で調教・休養・出走した週はやらない' },
+      run: on => { if (on) x.auto = { stat: x.act.stat, grade: x.act.grade }; else if (same) delete x.auto; trainNow(x); } };
     renderStable(); return; }
+  if (d.autooff) { const x = game.horses.find(y => y.id === +d.autooff); if (x) { delete x.auto; saveAll(); } renderStable(); return; }
   if (d.askrest) { const x = game.horses.find(y => y.id === +d.askrest);
     pendingAsk = { tag: '😴 休養', title: `${x.name} を休ませる`, q: `体力 ${Math.round(x.hp)} → ${Math.min(100, Math.round(x.hp + 35))}<br>今週はトレーニング・出走ができなくなります`, ok: '休養させる', run: () => restNow(x) };
     renderStable(); return; }
@@ -2809,7 +2823,7 @@ stableEl.addEventListener('click', ev => {
   if (d.askreset !== undefined) {
     pendingAsk = { tag: '🗑 データ初期化', title: 'すべてのデータを消しますか？', q: '馬・引退馬・所持金・年数がすべて消えて、1年目からやり直しになります。<br>元には戻せません', ok: '消して最初から', run: resetSave };
     renderStable(); return; }
-  if (d.ask) { const pa = pendingAsk; pendingAsk = null; if (d.ask === 'ok' && pa) pa.run(); else renderStable(); return; }
+  if (d.ask) { const chk = document.getElementById('askChk'), on = !!(chk && chk.checked), pa = pendingAsk; pendingAsk = null; if (d.ask === 'ok' && pa) pa.run(on); else renderStable(); return; }
   if (d.goto) { const t = document.getElementById(d.goto); if (t && t.scrollIntoView) t.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
   if (d.cf) {                                             // 観戦の再確認ポップアップ
     confirmOpen = false;
@@ -2938,8 +2952,16 @@ function restNow(h) {
 }
 function trainNow(h) {
   if (hw(h) !== 2 && GRADES[h.act.grade].adv) h.act.grade = 4;   // 上級調教は第2層だけ
-  const a = h.act, g = GRADES[a.grade];
-  if (!h || locked(h) || h.injured || money < g.cost) return;
+  if (!h || locked(h) || h.injured || money < GRADES[h.act.grade].cost) return;
+  const item = trainApply(h, h.act.stat, h.act.grade);
+  saveAll();
+  runTrainingQueue([item], () => showStable());
+}
+// 調教の体力消費(自動トレーニングの「体力がなくなったらお休み」の判定にも使う)
+const trainHpCost = (h, stat) => stat === 'cond' ? 5 : 12 * Math.max(0, 1.2 - h.st.hlt / 100) * ((TRAIN_OF[stat] || {}).hp || 1);
+// 調教を1回行う(画面の演出なし)。手動と自動で同じ伸び・疲れ・ケガになる
+function trainApply(h, stat, grade) {
+  const a = { stat, grade }, g = GRADES[grade];
   money -= g.cost; h.trained = true;
   let item; const hpB = h.hp, condB = h.cond;
   // 必ず成功し、一部が大成功。上限に達していても成功・大成功の表示は普段どおり(上限は知らせない)
@@ -2964,12 +2986,26 @@ function trainNow(h) {
     if (h.hp < 25 && Math.random() < (25 - h.hp) / 60 * (1 - (h.st.hlt - 19) / 120)) { h.injured = 2 + Math.floor(Math.random() * 3); item.injured = h.injured; }
   }
   item.hpB = hpB; item.hpA = h.hp; item.condB = condB; item.cost = g.cost;
-  saveAll();
-  runTrainingQueue([item], () => showStable());
+  return item;
+}
+// 自動トレーニング：週送りのとき、今週まだ何もしていない馬に登録した調教を行う
+// ・体力が足りない週はお休み(登録はそのまま) ・手動で調教／休養／出走した週はやらない ・解除するまで毎週続く
+function runAutoTraining() {
+  for (const h of game.horses) {
+    const au = h.auto; if (!au) continue;
+    if (h.trained || h.rested || h.act.type === 'race' || h.injured || locked(h)) continue;
+    const grade = hw(h) !== 2 && GRADES[au.grade].adv ? 4 : au.grade, g = GRADES[grade];
+    const name = `${TRAIN_OF[au.stat].n}（${g.fac}）`;
+    if (h.hp - trainHpCost(h, au.stat) <= 0) { game.log.push(`🔁 ${h.name}：体力が足りないので自動トレーニングはお休み`); continue; }
+    if (money < g.cost) { game.log.push(`🔁 ${h.name}：お金が足りないので自動トレーニングはお休み`); continue; }
+    const it = trainApply(h, au.stat, grade);
+    game.log.push(`🔁 ${h.name}：自動トレーニング ${name}${it.great ? ' 大成功！' : ''}${it.injured ? ' ⚠ケガをしてしまった…' : ''}`);
+  }
 }
 function advanceWeek() {
   money += salary();
   game.log = [`給料 +${yen(salary())}`];
+  runAutoTraining();
   const view = viewW(), wr = raceOf(view), entries = [], other = [];
   for (const h of game.horses) {
     if (h.injured) { h.lastAct = 'injured'; continue; }
