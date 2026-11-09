@@ -48,7 +48,12 @@ function getPlayer(pid, name) {
   return p;
 }
 const pubStats = p => ({ pid: p.pid, name: p.name, bet: p.bet, pay: p.pay, hits: p.hits, n: p.n, best: p.best, vsWins: p.vsWins, vsRaces: p.vsRaces,
-  st: !!p.st, g1: p.g1 || 0, lg: p.lg || 0, top: p.top || null, g1h: p.g1h || null, lgh: p.lgh || null });
+  st: !!p.st, g1: p.g1 || 0, lg: p.lg || 0, top: p.top || null, g1h: p.g1h || null, lgh: p.lgh || null,
+  on: (onlineN[p.pid] || 0) > 0, ls: p.lastSeen || 0 });
+// いま接続している人数(プレイヤーごと)。ランキングで「オンライン／最終ログイン」を出すのに使う
+const onlineN = {};
+let rankT = 0;
+const pushRanking = () => { clearTimeout(rankT); rankT = setTimeout(() => io.emit('ranking', ranking()), 1000); };   // 出入りがあったら全員のランキングを更新
 const ranking = () => Object.values(players).filter(p => p.name && (p.n || p.vsRaces || p.st)).map(pubStats);
 
 // ===== アカウント(ユーザーID・プレイヤー名・パスワード) =====
@@ -147,8 +152,10 @@ io.on('connection', sock => {
     const tokPid = d.token && tokenOwner[d.token];
     let pid = tokPid || String(d.pid || '').slice(0, 40); if (!pid) return;
     if (!tokPid && players[pid] && players[pid].pass) return sock.emit('err', 'ログインが必要です');   // アカウントのIDをゲストが名乗ることはできない
+    if (sock.data.pid && sock.data.pid !== pid) onlineN[sock.data.pid] = Math.max(0, (onlineN[sock.data.pid] || 1) - 1);
+    if (sock.data.pid !== pid) onlineN[pid] = (onlineN[pid] || 0) + 1;
     sock.data.pid = pid;
-    const p = getPlayer(pid, tokPid ? (d.name || players[pid].name) : d.name); save();
+    const p = getPlayer(pid, tokPid ? (d.name || players[pid].name) : d.name); p.lastSeen = Date.now(); save(); pushRanking();
     sock.emit('me', pubStats(p));
   });
   // G1・レジェンドの勝利数と最強馬(クライアントが保存のたびに送る)
@@ -253,7 +260,11 @@ io.on('connection', sock => {
     emitRoom(r);
   });
 
-  sock.on('disconnect', () => leaveRoom(sock));
+  sock.on('disconnect', () => {
+    leaveRoom(sock);
+    const pid = sock.data.pid;
+    if (pid) { onlineN[pid] = Math.max(0, (onlineN[pid] || 1) - 1); if (players[pid]) { players[pid].lastSeen = Date.now(); save(); } pushRanking(); }
+  });
 });
 
 server.listen(PORT, () => console.log(`ブロック馬 オンライン版 起動: http://localhost:${PORT}`));
