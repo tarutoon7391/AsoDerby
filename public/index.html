@@ -2626,7 +2626,7 @@ function seenTag(p) {
   if (p.on || p.pid === player.id && online.connected) return '<span class="seen on">● オンライン</span>';
   if (!p.ls) return '';
   const m = Math.floor((Date.now() - p.ls) / 60000);
-  const t = m < 1 ? 'たった今' : m < 60 ? `${m}分前` : m < 1440 ? `${Math.floor(m / 60)}時間前` : m < 43200 ? `${Math.floor(m / 1440)}日前` : (d => `${d.getMonth() + 1}/${d.getDate()}`)(new Date(p.ls));
+  const t = m < 1 ? 'たった今' : m < 60 ? `${m}分前` : m < 1440 ? `${Math.floor(m / 60)}時間前` : m < 10080 ? `${Math.floor(m / 1440)}日前` : '1週間以上前';
   return `<span class="seen">${t}</span>`;
 }
 function bulkDelHTML() {
