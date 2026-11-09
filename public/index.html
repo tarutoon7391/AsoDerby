@@ -2080,6 +2080,8 @@ function raceTarget(h) { return raceOf(hw(h)).c; }
 function heldRace() { return raceOf(viewW()); }
 function canEnter(h) {
   if (h.rested) return [false, '今週は休養済み'];
+  const cost = hltRaceCost(h.st.hlt);
+  if (h.hp - cost <= 0) return [false, `体力が足りません（出走すると0になる。あと${Math.floor(cost - h.hp) + 1}必要）`];   // 走り切れない馬は出さない
   const sc = raceOf(hw(h)), [ok, why] = eligible(h, sc.c);
   return ok ? [true, sc.c] : [false, why];
 }
@@ -2844,7 +2846,7 @@ function advanceWeek() {
   for (const h of game.horses) {
     if (h.injured) { h.lastAct = 'injured'; continue; }
     const t = h.act.type, r = raceOf(hw(h));
-    if (t === 'race' && eligible(h, r.c)[0]) { (hw(h) === view ? entries : other).push(h); h.lastAct = 'race'; }
+    if (t === 'race' && eligible(h, r.c)[0] && h.hp - hltRaceCost(h.st.hlt) > 0) { (hw(h) === view ? entries : other).push(h); h.lastAct = 'race'; }
     else h.lastAct = h.rested ? 'rest' : h.trained ? 'train' : 'none';
   }
   // 表示していない階層のレースは裏で結果だけ出す
