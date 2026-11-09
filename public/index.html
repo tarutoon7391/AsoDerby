@@ -127,7 +127,7 @@ button.main{background:#2ecc71;color:#fff}
 #tickets .empty{opacity:.6}
 #bet .sts{display:flex;gap:3px;margin-top:3px;flex-wrap:nowrap}
 #bet .st,#focus .st{display:inline-flex;align-items:center;gap:1px;font-size:9px;font-weight:600;opacity:.9}
-.rk{font-style:normal;display:inline-block;min-width:13px;padding:0 2px;border-radius:3px;text-align:center;font-size:9px;font-weight:900;color:#fff;line-height:13px;text-shadow:0 0 2px rgba(0,0,0,.5)}
+.rk{white-space:nowrap;font-style:normal;display:inline-block;min-width:13px;padding:0 2px;border-radius:3px;text-align:center;font-size:9px;font-weight:900;color:#fff;line-height:13px;text-shadow:0 0 2px rgba(0,0,0,.5)}
 #focus .rk{font-size:11px;line-height:16px;min-width:18px}
 #bet .row.mine{background:rgba(255,77,109,.16)}
 #bet .row.strong{position:relative;box-shadow:inset 0 0 0 1px rgba(255,214,120,.55),inset 0 0 12px rgba(255,200,90,.22);border-radius:6px;animation:strongGlow 2.4s ease-in-out infinite}
@@ -532,7 +532,7 @@ button.main{background:#2ecc71;color:#fff}
 #bet .btimer b{font-size:16px}
 
 #stable .resetbtn{display:block;margin:18px auto 6px;padding:7px 14px;font-size:11px;background:transparent;border:1px solid #c9a98a;color:#8a6a45}
-#stable .rk.big{font-size:16px;line-height:22px;min-width:34px;border-radius:5px;padding:0 3px}
+#stable .rk.big{font-size:16px;line-height:22px;min-width:34px;border-radius:5px;padding:0 3px;white-space:nowrap;letter-spacing:-.5px}
 /* 育成画面(馬の詳細)だけ、下半分をすき間なくフルに使う */
 #stable.half .sbody{padding:0;display:flex;flex-direction:column;overflow:hidden!important;touch-action:none;overscroll-behavior:none}
 #stable.half .panel{flex:1;border:0;border-radius:0;box-shadow:none;padding:10px 12px;margin:0}
@@ -1364,12 +1364,27 @@ let cond = [];
 const condIcon = i => { const c = COND[cond[i]]; return `<span class="arw" title="${c.n}" style="color:${c.c};transform:rotate(${c.a}deg)">➜</span>`; };
 // ================= ランク・ステータス・クラス =================
 const RANKS = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS', 'Z', 'ZZ', 'ZZZ'];
-const RANK_V = [19, 30, 41, 60, 70, 79, 90, 97, 200, 300, 400];               // ランク→能力値(基準に合わせて逆算)
+const RANK_V = [19, 30, 41, 60, 70, 79, 90, 97, 300, 600, 1000];               // ランク→能力値(基準に合わせて逆算)
 const RANK_C = ['#8e8e93', '#a2845e', '#34c759', '#0a84ff', '#bf5af2', '#ff9f0a', '#ff375f', '#ffd60a',
   'linear-gradient(135deg,#ff2d55,#5856d6)', 'linear-gradient(135deg,#ffd60a,#ff375f 50%,#bf5af2)', 'conic-gradient(from 45deg,#ff6b9d,#ffd36b,#7cf0a5,#6bc8ff,#b48bff,#ff6b9d)'];
 // ランクの境目：SSSまでは隣のランクとの中間、Z/ZZ/ZZZ は 200/300/400 ちょうど
 const RANK_T = RANK_V.map((v, i) => i === 0 ? -Infinity : i >= 8 ? v : (RANK_V[i - 1] + v) / 2);
 const rankOf = v => { let k = 0; for (let i = 1; i < RANKS.length; i++) if (v >= RANK_T[i]) k = i; return k; };
+// Z・ZZ・ZZZだけ5等分して「-・無印・+・++・+++」をつける(ZZZは1000〜1600を5等分、1480以上がZZZ+++)。E〜SSSは今までどおり
+const RANK_TOP = 1600;
+const rankSpan = k => [k === 0 ? 0 : RANK_T[k], k < RANKS.length - 1 ? RANK_T[k + 1] : RANK_TOP];
+const SUB_N = 5, SUB_L = ['-', '', '+', '++', '+++'];
+const Z0 = 8;                                                       // Zランクの始まり
+const rankSub = v => { const k = rankOf(v); if (k < Z0) return { k, s: 0 }; const [lo, hi] = rankSpan(k); return { k, s: Math.max(-1, Math.min(3, Math.floor((v - lo) / (hi - lo) * SUB_N) - 1)) }; };
+const rankLabel = v => { const { k, s } = rankSub(v); return RANKS[k] + SUB_L[s + 1]; };
+// ランク補正も段階ごとに1/5ずつずらす(+++は次のランクの手前)
+const rankAdj = (ADJ, v) => { const { k, s } = rankSub(v);
+  if (s > 0) return ADJ[k] + s * ((ADJ[k + 1] ?? ADJ[k] + 1) - ADJ[k]) / SUB_N;
+  if (s < 0) return ADJ[k] - (ADJ[k] - (ADJ[k - 1] ?? ADJ[k] - 6)) / SUB_N;
+  return ADJ[k]; };
+// 次の段階の境目
+const RANK_STEPS = RANKS.flatMap((_, k) => { const [lo, hi] = rankSpan(k); return k < Z0 ? [lo] : [...Array(SUB_N).keys()].map(j => lo + j * (hi - lo) / SUB_N); }).filter(t => t > 0);
+const nextStep = v => RANK_STEPS.find(t => t > v + 1e-9);
 const CLASSES = [
   { n: '新馬戦', a: 21.5 }, { n: '未勝利', a: 19.5 }, { n: 'OP', a: 33.5 }, { n: 'G3', a: 42 },
   { n: 'G2', a: 51.5 }, { n: '国内G1', a: 63.5 }, { n: '海外G1', a: 69.5 }, { n: 'レジェンド', a: 79 },
@@ -1428,8 +1443,8 @@ const hltRaceCost = hlt => 20 * (1 - Math.min(0.25, Math.max(0, (hlt - HLT_OVER)
 function calcAbility(st) {
   let a = 0; for (const k in DIST_W) a += DIST_W[k] * st[k];
   a += hltAbility(st.hlt || 0);
-  a += APT_ADJ[rankOf(race.surface === '芝' ? st.turf : st.dirt)];
-  a += WET[race.baba] * RAIN_ADJ[rankOf(st.rain)];
+  a += rankAdj(APT_ADJ, race.surface === '芝' ? st.turf : st.dirt);
+  a += WET[race.baba] * rankAdj(RAIN_ADJ, st.rain);
   return a;
 }
 // 健康が高いほど不調が出にくく、低いと好調が出にくい
@@ -1440,7 +1455,7 @@ function rollCond(hlt) {
   if (h < 0 && k <= 1 && Math.random() < Math.min(0.6, -h * 1.5)) k = pick([2, 3], [0.6, 0.4]);
   return k;
 }
-const rankChip = v => { const k = rankOf(v); return `<i class="rk" style="background:${RANK_C[k]}">${RANKS[k]}</i>`; };
+const rankChip = v => { const k = rankOf(v); return `<i class="rk" style="background:${RANK_C[k]}">${rankLabel(v)}</i>`; };
 const HIDDEN_STATS = new Set(['spd', 'sta', 'brs', 'gut']);   // 基本4能力は表示しない
 const SHOWN_STATS = STATS.filter(([k]) => !HIDDEN_STATS.has(k));
 const statLine = i => SHOWN_STATS.map(([k, ab]) => `<span class="st">${ab}${rankChip(stats[i][k])}</span>`).join('');
@@ -2131,7 +2146,7 @@ function scheduleHTML(compact) {
       : `<div class="scinfo hint2">マスをタップするとレースの詳細が出ます</div>`; })()}
     <div class="g1list">${(() => { const up = SC.filter(r => baseC(r.c) >= 5 && r.week >= cur); return up.slice(0, 6).map(r => `<span>第${r.week}週 ${r.n}</span>`).join('') + (up.length > 6 ? `<span class="more">ほか${up.length - 6}レース</span>` : ''); })()}</div></div>`;
 }
-const statValLine = st => `<div class="sgrid">${SHOWN_STATS.map(([k, ab, nm]) => { const r = rankOf(st[k]); return `<div class="sgc"><small>${nm}</small><i class="rk big" style="background:${RANK_C[r]}">${RANKS[r]}</i><b>${Math.round(st[k])}</b></div>`; }).join('')}</div>`;
+const statValLine = st => `<div class="sgrid">${SHOWN_STATS.map(([k, ab, nm]) => { const r = rankOf(st[k]); return `<div class="sgc"><small>${nm}</small><i class="rk big" style="background:${RANK_C[r]}">${rankLabel(st[k])}</i><b>${Math.round(st[k])}</b></div>`; }).join('')}</div>`;
 const statValLineOld = st => STATS.map(([k, ab]) => `<span class="st">${ab}${rankChip(st[k])}<small>${Math.round(st[k])}</small></span>`).join('');
 
 function showStable() {
@@ -3211,9 +3226,9 @@ const TALK = {
 const pickTalk = k => TALK[k][Math.floor(Math.random() * TALK[k].length)];
 const CAP_TALK = ['{s}はもうこれ以上伸びそうにないな…', 'この馬の{s}は、ここらが限界かもしれん', '{s}はもう十分だ。他を鍛えたほうがいいな', '{s}はこれで完成だな。もう伸びしろはなさそうだ'];
 function statBar(before, after) {
-  const r = rankOf(after), nextV = r < RANKS.length - 1 ? RANK_T[r + 1] : null;
+  const nextV = nextStep(after);
   return `<div class="rbar"><i class="base" style="width:${before}%"></i>${after > before ? `<i class="gain" style="left:${before}%;width:${after - before}%"></i>` : ''}</div>
-    <div class="rnext">${nextV ? `次のランク ${rankChip(RANK_V[r + 1])} まで あと <b>${Math.max(1, Math.ceil(nextV - after))}</b>` : '最高ランク到達！'}</div>`;
+    <div class="rnext">${nextV != null ? `次のランク ${rankChip(nextV + 1e-6)} まで あと <b>${Math.max(1, Math.ceil(nextV - after))}</b>` : '最高ランク到達！'}</div>`;
 }
 function resultHTML(it) {
   const h = it.h;
