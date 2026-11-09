@@ -28,6 +28,9 @@ canvas{display:block}
 .num{display:inline-block;width:17px;height:17px;border-radius:4px;text-align:center;font-weight:800;font-size:11px;line-height:17px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
 #info{position:fixed;right:8px;top:8px;background:rgba(10,20,30,.72);color:#fff;border-radius:10px;padding:7px 12px;font-size:12px;text-align:right;pointer-events:none;line-height:1.4}
 #info b{font-size:20px}
+#bar .hostop{display:none;width:100%;text-align:center;font-size:11px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.vsguest #bar .hostop{display:block}
+.vsguest #bar .cam,.vsguest #skipStr,.vsguest #distCamBtn,.vsguest #spdBtn{opacity:.45;pointer-events:none}
 #bar{position:fixed;left:0;right:0;bottom:0;padding:10px 8px calc(10px + env(safe-area-inset-bottom));display:flex;flex-wrap:wrap;gap:6px;justify-content:center;background:linear-gradient(transparent,rgba(0,0,0,.55))}
 button{border:0;border-radius:8px;padding:9px 11px;font-size:13px;font-weight:700;background:rgba(255,255,255,.9);color:#123;cursor:pointer;font-family:inherit}
 button.on{background:#ffcc33}
@@ -728,6 +731,7 @@ button.main{background:#2ecc71;color:#fff}
   <button id="ticketBtn">🎫 馬券</button>
   <button id="distCamBtn">📷 中距離</button>
   <button id="spdBtn">1x</button>
+  <span class="hostop">🎮 ホストが操作中</span>
 </div>
 <script src="three.min.js"></script>
 <script src="/socket.io/socket.io.js" onerror="window.__noSock = true"></script>
@@ -1777,9 +1781,10 @@ function updateHUD(dt, order, lead) {
 }
 
 document.querySelectorAll('.cam').forEach(b => b.onclick = () => {
+  if (isVsGuest()) return;                                    // 対戦のメンバーはホストのカメラで観戦
   camMode = b.dataset.cam;
   document.querySelectorAll('.cam').forEach(x => x.classList.toggle('on', x === b));
-  renderPicker();
+  renderPicker(); sendRaceSnap(true);
 });
 // 並走・後方を選んだら、見る馬の番号を選べる
 const pickEl = document.getElementById('pick');
@@ -1814,7 +1819,8 @@ function renderTickets() {
 // ===== 最後の直線までスキップ =====
 const skipStrBtn = document.getElementById('skipStr');
 skipStrBtn.onclick = () => {
-  if (state !== 'race') return;
+  if (state !== 'race' || isVsGuest()) return;
+  if (isVsHost()) rsSkip++;
   const leadTrav = () => Math.max(...runners.map(r => r.trav));
   let n = 0;
   while (state === 'race' && D - leadTrav() > 415 && n++ < 20000) { simStep(1 / 60); updateGate(1 / 60); }
@@ -1824,12 +1830,13 @@ skipStrBtn.onclick = () => {
     com.queue = []; com.shownT = 99;
   }
   lastMode = '';                                               // カメラを切り替え直す
+  sendRaceSnap(true);
 };
 const distCamBtn = document.getElementById('distCamBtn');
-distCamBtn.onclick = () => { camDist = (camDist + 1) % CAM_DIST.length; distCamBtn.textContent = '📷 ' + CAM_DIST[camDist].n; };
+distCamBtn.onclick = () => { if (isVsGuest()) return; camDist = (camDist + 1) % CAM_DIST.length; distCamBtn.textContent = '📷 ' + CAM_DIST[camDist].n; sendRaceSnap(true); };
 let speed = 1;
 const spdBtn = document.getElementById('spdBtn');
-spdBtn.onclick = () => { speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; spdBtn.textContent = speed + 'x'; };
+spdBtn.onclick = () => { if (isVsGuest()) return; speed = speed === 1 ? 2 : speed === 2 ? 4 : 1; spdBtn.textContent = speed + 'x'; sendRaceSnap(true); };
 addEventListener('resize', () => refreshView());
 
 // ================= 育成モード =================
@@ -2343,6 +2350,7 @@ function connectOnline() {
   sock.on('err', m => { online.err = m; onlineRerender(); });
   sock.on('raceSpec', ({ spec, betSec }) => startOnlineRace(spec, betSec));
   sock.on('go', () => onlineGo());
+  sock.on('rs', s => onRaceSnap(s));
   sock.on('vsResult', res => { online.lastVs = res; sock.emit('getRanking'); onlineRerender(); });
 }
 // 馬券の成績をランキングへ(対戦レースの馬券も含む)
@@ -2400,7 +2408,53 @@ function hostStartRace() {
   sock.emit('startRace', { spec });
 }
 // 受け取ったレース内容を自分の画面に組み立てる(ホストも同じ処理を通る)
+// ===== 対戦の同時観戦 =====
+// ホストだけがレースを計算し、馬の位置・倍速・カメラを0.1秒ごとに配信。ほかのメンバーはそれを再生するだけ
+const isVsHost = () => !!(race.online && online.room && online.room.host === player.id);
+const isVsGuest = () => !!(race.online && online.room && online.room.host !== player.id);
+let rsLast = 0, rsSkip = 0;
+function sendRaceSnap(force) {
+  if (!isVsHost() || !sock || !['count', 'race', 'done'].includes(state)) return;
+  const now = performance.now(); if (!force && now - rsLast < 100) return; rsLast = now;
+  const r = []; for (const x of runners) r.push(Math.round(x.trav * 100) / 100, Math.round(x.lane * 100) / 100, Math.round(x.v * 100) / 100);
+  sock.emit('rs', { st: state, ct: countT, t: raceT, sp: speed, cm: camMode, cd: camDist, tg: camTarget, r, f: finish.map(x => [x.i, x.ft]), mg: race.margin || 0, sk: rsSkip });
+}
+function onRaceSnap(s) {
+  if (!isVsGuest()) return;
+  s.at = performance.now(); online.snap = s;
+  // ホストの操作をそのまま反映
+  if (speed !== s.sp) { speed = s.sp; spdBtn.textContent = speed + 'x'; }
+  if (camMode !== s.cm) { camMode = s.cm; document.querySelectorAll('[data-cam]').forEach(b => b.classList.toggle('on', b.dataset.cam === camMode)); }
+  if (camDist !== s.cd) { camDist = s.cd; distCamBtn.textContent = '📷 ' + CAM_DIST[camDist].n; }
+  camTarget = s.tg; race.margin = s.mg;
+  if (s.sk !== online.skipSeen) {                                     // ホストが「直線まで」を押した
+    online.skipSeen = s.sk; gate.visible = false; gateGone = true; lastMode = '';
+    if (com) { guestApplyPos(s, 0); genCommentary([...runners].sort((a, b) => b.trav - a.trav)); com.queue = []; com.shownT = 99; }
+  }
+}
+function guestApplyPos(s, age) {
+  runners.forEach((x, i) => {
+    const tt = s.r[i * 3] + s.r[i * 3 + 2] * age, ln = s.r[i * 3 + 1];
+    if (Math.abs(tt - x.trav) > 6) x.trav = tt; else x.trav += (tt - x.trav) * 0.35;   // 大きくずれたら合わせ、普段はなめらかに寄せる
+    x.lane += (ln - x.lane) * 0.35; x.v = s.r[i * 3 + 2];
+  });
+}
+// メンバー側の1フレーム：自分では計算せず、ホストの状態を再生する
+function guestStep(rdt) {
+  const s = online.snap;
+  if (!s) { placeAll(rdt); return; }
+  const age = Math.min(0.4, (performance.now() - s.at) / 1000) * s.sp;   // 届いてからの経過(先読みは0.4秒まで)
+  if (s.st === 'count') { state = 'count'; countT = s.ct; }
+  else if (state === 'count' || state === 'ready') state = 'race';
+  if (state !== 'count') raceT = s.t + age;
+  guestApplyPos(s, age);
+  for (const [i, ft] of s.f) { const x = runners[i]; if (!x.done) { x.done = true; x.ft = ft; finish.push(x); } }
+  if (s.st === 'done' && finish.length === runners.length && state !== 'done') { state = 'done'; doneT = 0; }
+  if (state === 'done') { doneT += rdt * s.sp; if (doneT > 4 && !settled) settle(); }
+  placeAll(rdt * s.sp);
+}
 function applyOnlineRace(spec) {
+  online.snap = null; online.skipSeen = 0; rsSkip = 0;
   race = { cls: CLASSES[spec.cls], surface: spec.surface, weather: spec.weather, baba: spec.baba, name: spec.name, venue: spec.venue, type: '対戦', online: true };
   setDistance(spec.dist); applyRaceVisual();
   ownedSlots = {};
@@ -2430,6 +2484,7 @@ function onlineGo() {
   if (!online.waiting && slip.length) { money -= slipTotal(); saveMoney(); }   // 時間切れなら載せていた馬券をそのまま購入
   online.waiting = false; closeBet();
   resetRace(); planOrder = online.spec.planOrder.slice();
+  document.body.classList.toggle('vsguest', isVsGuest());          // メンバーは操作ボタンを無効化して「ホストが操作中」を表示
   state = 'count'; countT = 7.6;
 }
 function onlineHTML() {
@@ -2873,7 +2928,7 @@ function advanceRaces(entries, wr) {
 // 観戦したレースの結果を反映して週を締める
 let curWeekRace = null;
 function onWatchedRaceDone(order) {
-  if (race.online) { race.online = false; ownedSlots = {}; stableTab = 'online'; onlineSub = 'vs'; showStable(); return; }
+  if (race.online) { document.body.classList.remove('vsguest'); online.snap = null; race.online = false; ownedSlots = {}; stableTab = 'online'; onlineSub = 'vs'; showStable(); return; }
   for (const i in ownedSlots) applyResult(ownedSlots[i], order.indexOf(+i) + 1, curWeekRace.c, curWeekRace.n);
   pendingOwned = [];
   endWeek();
@@ -3589,7 +3644,8 @@ const clock = new THREE.Clock();
 function loop() {
   requestAnimationFrame(loop);
   const rdt = Math.min(clock.getDelta(), 0.05);
-  if (state === 'count') {
+  const guest = isVsGuest() && ['count', 'race', 'done'].includes(state);
+  if (state === 'count' && !guest) {
     countT -= rdt;
     center.textContent = '';
     if (countT <= 0) {
@@ -3599,7 +3655,8 @@ function loop() {
  }
   }
   const steps = speed, dt = rdt;
-  for (let i = 0; i < steps; i++) { simStep(dt); updateGate(dt); }
+  if (guest) { guestStep(rdt); updateGate(rdt * speed); }
+  else { for (let i = 0; i < steps; i++) { simStep(dt); updateGate(dt); } sendRaceSnap(false); }
   const { order, lead } = updateCamera(rdt);
   updateRain(rdt); updateMarkers(clock.elapsedTime); updateCommentary(rdt, order);
   checkGateVisible();

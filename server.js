@@ -219,6 +219,12 @@ io.on('connection', sock => {
     clearTimeout(r.timer); r.timer = setTimeout(() => goRace(r), BET_SEC * 1000 + 1500);
     emitRoom(r);
   });
+  // 対戦中、ホストのレース状態(馬の位置・倍速・カメラ)を他のメンバーへそのまま中継する(みんなで同じ映像を観戦)
+  sock.on('rs', d => {
+    const r = rooms[sock.data.room];
+    if (!r || r.host !== sock.data.pid || !d || typeof d !== 'object') return;
+    sock.to(r.code).volatile.emit('rs', d);
+  });
   sock.on('ready', () => {
     const r = rooms[sock.data.room];
     if (!r || r.state !== 'betting' || !r.members.has(sock.id)) return;
