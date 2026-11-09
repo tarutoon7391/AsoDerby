@@ -1366,12 +1366,14 @@ const CLASSES = [
   { n: '新馬戦', a: 21.5 }, { n: '未勝利', a: 19.5 }, { n: 'OP', a: 33.5 }, { n: 'G3', a: 42 },
   { n: 'G2', a: 51.5 }, { n: '国内G1', a: 63.5 }, { n: '海外G1', a: 69.5 }, { n: 'レジェンド', a: 79 },
   // ---- 第2層「幻境」(index 8〜15)。並びは第1層と同じで、NPCがめちゃくちゃ強い ----
-  { n: '幻・新馬戦', a: 95, w2: true }, { n: '幻・未勝利', a: 90, w2: true }, { n: '幻・OP', a: 110, w2: true }, { n: '幻・G3', a: 125, w2: true },
-  { n: '幻・G2', a: 140, w2: true }, { n: '幻・G1', a: 160, w2: true }, { n: '異界G1', a: 175, w2: true }, { n: '幻境レジェンド', a: 195, w2: true },
+  // レジェンドを勝てる親(基本95)の子が、ほぼ調教なしで新馬・未勝利をたまに勝てる(10〜20%)くらい。G1以上は何世代か重ねてから
+  { n: '幻・新馬戦', a: 48, w2: true }, { n: '幻・未勝利', a: 46, w2: true }, { n: '幻・OP', a: 58, w2: true }, { n: '幻・G3', a: 68, w2: true },
+  { n: '幻・G2', a: 80, w2: true }, { n: '幻・G1', a: 93, w2: true }, { n: '異界G1', a: 103, w2: true }, { n: '幻境レジェンド', a: 118, w2: true },
 ];
 // 階層(ワールド)。第1層=通常、第2層=幻境。インフレしたら第3層を足していく想定
 const WORLDS = { 1: { n: '第1層', sub: '' }, 2: { n: '第2層', sub: '幻境', en: 'MIRAGE' } };
-const W2 = 8;                                                          // 第2層のクラスの始まり
+const W2 = 8;
+const W2_APT = [0, 0, 8, 16, 30, 50, 75, 110];                          // 幻境NPCの適性の上乗せ(新馬〜幻境レジェンド)                                                          // 第2層のクラスの始まり
 const hw = h => (h && h.world) || 1;                                    // 馬の所属階層
 const baseC = c => c >= W2 ? c - W2 : c;                                // 階層をまたいで同じ格(0新馬〜7レジェンド)
 const viewW = () => game.view === 2 && hasW2() ? 2 : 1;                 // いま表示している階層
@@ -1409,7 +1411,7 @@ function genNPC(cls, sd = 3, boost = 0) {
   for (const k of ['spd', 'sta', 'brs', 'gut']) st[k] = L + 5 * randn();
   st.hlt = L + 8 * randn();
   st.turf = RANK_V[aptRank()]; st.dirt = RANK_V[aptRank()]; st.rain = RANK_V[aptRank()];
-  if (cls.w2) for (const k of ['turf', 'dirt', 'rain']) st[k] = 90 + Math.random() * 230;   // 幻境のNPCは適性もSSS〜ZZ
+  if (cls.w2) { const b = W2_APT[baseC(CLASSES.indexOf(cls))]; for (const k of ['turf', 'dirt', 'rain']) st[k] += b * (0.7 + Math.random() * 0.6); }   // 幻境は格が上がるほど適性も高い
   return st;
 }
 // 能力値 = 距離ごとの重み付き合計 + 馬場適性 + 雨補正
