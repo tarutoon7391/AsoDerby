@@ -3139,7 +3139,8 @@ const CT = {
   fly: ['大外から{a}が飛んでくる！', '{a}だ！{a}がものすごい脚で突っ込んでくる！', '後方から{a}が猛追！'],
   close: ['{a}か！{b}か！並んでゴール前！', '{a}と{b}の叩き合い！', '{a}、{b}、譲らない！'],
   away: ['{a}、リードは{g}馬身！', '{a}が抜け出している！リード{g}馬身！', '{a}、これは強い！'],
-  win: ['{a}、1着でゴールイン！', '{a}が先頭でゴール！', '勝ったのは{a}！', '{a}、見事に差し切りました！'],
+  win: ['{a}、1着でゴールイン！', '{a}が先頭でゴール！', '勝ったのは{a}！', '{a}、抜け出して1着！'],
+  winHold: ['{a}、粘り切った！', '{a}、最後まで先頭を譲らず！', '{a}、押し切りました！', '{a}、後続の追撃を振り切った！', '{a}、しぶとく粘って1着！'],
   winNige: ['{a}、逃げ切った！', '{a}がそのまま押し切ってゴール！'],
   winOoni: ['{a}、大逃げ炸裂！そのまま逃げ切った！', '{a}、最後まで影を踏ませず！大逃げで逃げ切り！', 'なんということだ！{a}、大逃げで押し切った！'],
   winSashi: ['{a}、鮮やかに差し切った！', '{a}、外から豪快に差し切りました！', '{a}、最後に捕らえた！', '{a}、ゴール寸前で差し切った！'],
@@ -3263,6 +3264,7 @@ function straightCommentary(order, rem, g) {
   // --- 直線入口 ---
   once('st', () => {
     com.lastLeader = L.i; com.leadChgT = raceT;
+    st.entry = Object.fromEntries(order.map((r, k) => [r.i, k]));   // 直線入口の順位(勝ち方の判定用)
     if (/大逃げ/.test(L.o.style) && gapB(L, S) >= 5) { st.solo = true; sayS(CT.soloIn, { a: nm(L), g: Math.round(gapB(L, S)) }, 3, 0); }
     else if (gapB(L, S) < 0.8 && onScr(S)) sayS(CT.stInPair, { a: nm(L), b: nm(S) }, 3, 0);
     else sayS(CT.stIn, { a: nm(L) }, 3, 0);
@@ -3398,8 +3400,12 @@ function genCommentary(order) {
     const w = finish[0], p = pop[w.i];
     const close = finish[1] && finish[1].ft - w.ft < 0.08;
     com.queue = [];                                     // 残りの実況は捨てて、勝ち馬だけ流して終わり
-    const wl = /大逃げ/.test(w.o.style) ? CT.winOoni : /逃げ/.test(w.o.style) ? CT.winNige.concat(CT.win.slice(0, 3))
-      : /直線一気|追込/.test(w.o.style) ? CT.winOikomi.concat(CT.winSashi) : /差し|まくり/.test(w.o.style) ? CT.winSashi.concat(CT.win.slice(0, 3)) : CT.win;
+    // 勝ち方で言い回しを変える。「差し切り」は差し・追込の馬が直線で後ろから突っ込んで勝ったときだけ
+    const ent = com.st && com.st.entry ? com.st.entry[w.i] : 0, ledIn = com.st && com.st.lead === w.i;
+    const cameFrom = ent >= 2 || (com.st && com.st.surged.has(w.i));
+    const wl = /差し|追込|直線一気/.test(w.o.style) && cameFrom ? (/追込|直線一気/.test(w.o.style) && ent >= 5 ? CT.winOikomi.concat(CT.winSashi) : CT.winSashi)
+      : ledIn ? (/大逃げ/.test(w.o.style) ? CT.winOoni : /逃げ/.test(w.o.style) ? CT.winNige.concat(CT.winHold) : CT.winHold)
+      : CT.win;
     let t = close ? fill(pk(CT.photo), { a: nm(w) }) : fill(pk(wl), { a: nm(w) });
     if (p === 1) t += ' ' + pk(CT.fav); else if (p >= 8) t += ' ' + fill(pk(['大波乱です！', '{p}番人気の大金星！']), { p });
     say(t, 5); com.shownT = 99; com.ended = true;
