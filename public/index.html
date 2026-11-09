@@ -1364,14 +1364,14 @@ let cond = [];
 const condIcon = i => { const c = COND[cond[i]]; return `<span class="arw" title="${c.n}" style="color:${c.c};transform:rotate(${c.a}deg)">➜</span>`; };
 // ================= ランク・ステータス・クラス =================
 const RANKS = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS', 'Z', 'ZZ', 'ZZZ'];
-const RANK_V = [19, 30, 41, 60, 70, 79, 90, 97, 300, 1800, 3300];   // Z帯は1段階300ずつ(Z- 300 → ZZZ+++ 4500)               // ランク→能力値(基準に合わせて逆算)
+const RANK_V = [19, 30, 41, 60, 70, 79, 90, 97, 300, 800, 1300];   // Z帯は1段階100ずつ(Z- 300 → ZZZ+++ 1700)               // ランク→能力値(基準に合わせて逆算)
 const RANK_C = ['#8e8e93', '#a2845e', '#34c759', '#0a84ff', '#bf5af2', '#ff9f0a', '#ff375f', '#ffd60a',
   'linear-gradient(135deg,#ff2d55,#5856d6)', 'linear-gradient(135deg,#ffd60a,#ff375f 50%,#bf5af2)', 'conic-gradient(from 45deg,#ff6b9d,#ffd36b,#7cf0a5,#6bc8ff,#b48bff,#ff6b9d)'];
 // ランクの境目：SSSまでは隣のランクとの中間、Z/ZZ/ZZZ は 200/300/400 ちょうど
 const RANK_T = RANK_V.map((v, i) => i === 0 ? -Infinity : i >= 8 ? v : (RANK_V[i - 1] + v) / 2);
 const rankOf = v => { let k = 0; for (let i = 1; i < RANKS.length; i++) if (v >= RANK_T[i]) k = i; return k; };
-// Z・ZZ・ZZZだけ「-・無印・+・++・+++」の5段階(1段階300)。E〜SSSは今までどおり
-const RANK_TOP = 4800;
+// Z・ZZ・ZZZだけ「-・無印・+・++・+++」の5段階(1段階100)。E〜SSSは今までどおり
+const RANK_TOP = 1800;
 const rankSpan = k => [k === 0 ? 0 : RANK_T[k], k < RANKS.length - 1 ? RANK_T[k + 1] : RANK_TOP];
 const SUB_N = 5, SUB_L = ['-', '', '+', '++', '+++'];
 const Z0 = 8;                                                       // Zランクの始まり
