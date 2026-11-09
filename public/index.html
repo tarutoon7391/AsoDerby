@@ -254,6 +254,14 @@ button.main{background:#2ecc71;color:#fff}
 #stable .nrow{display:flex;gap:6px}
 #stable .nrow input{flex:1;min-width:0;font-size:16px;padding:9px 10px;border-radius:8px;border:0;background:#fff;color:#123;font-family:inherit}
 #stable .coats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+#stable .nworld{display:flex;gap:6px}
+#stable .nworld button{flex:1;display:flex;align-items:baseline;justify-content:center;gap:6px;padding:9px 6px;border-radius:12px;background:#f3e3d0;color:#6b4a2a;border:2px solid #e1cda8;opacity:.7}
+#stable .nworld button.on{opacity:1}
+#stable .nworld .w1.on{background:#6aa84f;border-color:#4e8a39;color:#fff}
+#stable .nworld .w2{background:linear-gradient(135deg,#2b1f5c,#5b3f9a);color:#e9dcff;border-color:#8a6cc4}
+#stable .nworld .w2.on{box-shadow:0 0 0 2px #e8c24a,0 0 12px rgba(180,140,255,.8);color:#fff}
+#stable .nworld span{font-size:12px;font-weight:900}
+#stable .nwhint{font-size:10.5px;opacity:.75;margin:4px 0 2px;line-height:1.4}
 #stable .coats button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;font-size:11px}
 #stable .coats i{width:26px;height:16px;border-radius:5px;border:3px solid}
 #stable .ninfo{margin:10px 0 4px;font-size:12px;display:flex;align-items:center;gap:4px}
@@ -2713,6 +2721,9 @@ function namingHTML() {
     <div class="nrow"><input id="nameIn" type="text" maxlength="12" value="${escH(h.name)}"><button data-rname>🎲</button></div>
     <div class="lb">毛色</div>
     <div class="coats">${COAT_TYPES.map((c, k) => `<button data-coat="${k}" class="${h.coatName === c.n ? 'on' : ''}"><i style="background:#${c.body.toString(16).padStart(6, '0')};border-color:#${c.mane.toString(16).padStart(6, '0')}"></i>${c.n}</button>`).join('')}</div>
+    ${naming.canW2 ? `<div class="lb">育てる世界</div>
+    <div class="nworld">${[1, 2].map(w => `<button data-nworld="${w}" class="w${w} ${hw(h) === w ? 'on' : ''}"><b>${WORLDS[w].n}</b>${WORLDS[w].sub ? `<span>${WORLDS[w].sub}</span>` : ''}</button>`).join('')}</div>
+    <div class="nwhint">${hw(h) === 2 ? '幻境のレースに出走し、上級調教も使える。NPCはとても強い' : 'いつもの世界で育てる（上級調教は使えない）'}<br>あとから世界は変えられません</div>` : ''}
     <div class="ninfo">${styleTag(h.style)}</div>
     ${statValLine(h.st)}
     <button class="main" id="nameOk">この名前で厩舎に入れる</button>
@@ -2759,10 +2770,11 @@ stableEl.addEventListener('click', ev => {
   const ni = document.getElementById('nameIn');
   if (naming && ni && ni.value !== undefined) naming.h.name = ni.value.trim().slice(0, 12) || naming.h.name;
   if (d.coat !== undefined && naming) { applyCoat(naming.h, COAT_TYPES[+d.coat]); }
+  else if (d.nworld && naming && naming.canW2) { naming.h.world = +d.nworld; }
   else if (d.rname !== undefined && naming) { naming.h.name = randPick(NAME_A) + randPick(NAME_B); }
-  else if (el.id === 'nameOk' && naming) { game.log = [`${naming.from}：${naming.h.name}（${naming.h.coatName}）が入厩しました`]; naming = null; pHorseId = -1; }
+  else if (el.id === 'nameOk' && naming) { game.log = [`${naming.from}：${naming.h.name}（${naming.h.coatName}）が${hw(naming.h) === 2 ? '第2層「幻境」の' : ''}厩舎に入りました`]; if (naming.canW2) game.view = hw(naming.h); naming = null; pHorseId = -1; }
   else if (naming) return;                                  // 名付け中は他の操作をしない
-  if (d.coat !== undefined || d.rname !== undefined || el.id === 'nameOk') {}
+  if (d.coat !== undefined || d.nworld !== undefined || d.rname !== undefined || el.id === 'nameOk') {}
   else if (d.stab) { stableTab = d.stab; gachaResult = null; bgachaResult = null; stableView = 'list'; breedSel = breedSel.filter(breedHorse); if (d.stab === 'online') { connectOnline(); if (sock && online.connected) sock.emit('getRanking'); } }
   else if (d.sel) { selId = +d.sel; stableView = 'detail'; detailTab = 'info'; }
   else if (d.hnav) {                                      // 育成画面の左右矢印で前後の馬へ(タブはそのまま)
@@ -2805,7 +2817,7 @@ stableEl.addEventListener('click', ev => {
       const [sire, dam] = a.sex === '牝' ? [b, a] : [a, b];
       const x = breedFoal(sire, dam);
       [a, b].forEach(p => { if (p.ticket) game.tickets = game.tickets.filter(t => t !== p); else p.bredYear = game.year; });
-      game.horses.push(x); breedSel = []; naming = { h: x, from: `${sire.name}×${dam.name}の子が誕生` };
+      game.horses.push(x); breedSel = []; naming = { h: x, from: `${sire.name}×${dam.name}の子が誕生`, canW2: x.world === 2 };   // 幻境に行ける子は、どちらで育てるか選べる
     }
   }
   else if (d.isub) { inheritSub = d.isub; bgachaResult = null; }
