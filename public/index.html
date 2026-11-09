@@ -441,6 +441,7 @@ button.main{background:#2ecc71;color:#fff}
 #stable .wtabs .w2{background:linear-gradient(135deg,#2b1f5c,#5b3f9a);color:#e9dcff;border-color:#8a6cc4}
 #stable .wtabs .w2.on{box-shadow:0 0 0 2px #e8c24a,0 0 14px rgba(180,140,255,.8);color:#fff}
 #stable .wtabs .w2:not(.on),#stable .wtabs .w1:not(.on){opacity:.75}
+#stable .hbtag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:900;color:#1f7a3a;background:#dff3e5;vertical-align:middle}
 #stable .wtag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:900;color:#fff;background:linear-gradient(135deg,#5b3f9a,#b06ab3);vertical-align:middle}
 #stable .wtag.gate{background:linear-gradient(135deg,#e8c24a,#b06ab3)}
 #stable .sched.w2{background:linear-gradient(180deg,#2b1f5c,#45307e);color:#efe6ff}
@@ -2603,7 +2604,8 @@ function vsHTML() {
 // ===== 継承(配合)タブ =====
 let breedSel = [], inheritSub = 'breed', bgachaResult = null, breedFilter = 'all';   // breedFilter: 'all' / 'mine'(自分の引退馬) / レア度名   // 親：'r12'(引退馬) / 't34'(配合券)
 const breedHorse = key => key[0] === 'r' ? game.retired.find(h => h.id === +key.slice(1)) : game.tickets.find(h => h.id === +key.slice(1));
-const bredThisYear = h => h.bredYear === game.year;
+const homebred = h => !!h.sire;                                     // 自家生産馬(配合で生まれた馬)
+const bredThisYear = h => !homebred(h) && h.bredYear === game.year;   // 自家生産馬は1年に何度でも配合できる
 const SEX_SVG = {
   m: '<svg viewBox="0 0 20 20"><circle cx="8" cy="12" r="4.6"/><path d="M11.3 8.7 17 3M17 3h-5M17 3v5"/></svg>',
   f: '<svg viewBox="0 0 20 20"><circle cx="10" cy="7.5" r="4.6"/><path d="M10 12.1V19M7 16h6"/></svg>',
@@ -2626,7 +2628,7 @@ function breedListHTML() {
   if (breedFilter !== 'mine') out += `<div class="lb2">配合券（${breedFilter === 'all' ? `${game.tickets.length}枚` : `${breedFilter} ${tk.length}枚`}・使うとなくなります）</div>
     ${breedFilter === 'all' ? bulkDelHTML() : tk.length > 1 ? `<div class="bulk"><span>まとめて捨てる</span><button data-bdelrar="${breedFilter}" style="--rc:${(BRAR[Object.keys(BRAR).find(k => BRAR[k].n === breedFilter)] || {}).c}">${breedFilter}<i>×${tk.length}</i></button></div>` : ''}
     ${tk.length ? tk.map(h => breedCard(h, 't' + h.id)).join('') : '<div class="empty">配合券がありません。「配合ガチャ」で手に入れよう</div>'}`;
-  if (breedFilter === 'all' || breedFilter === 'mine') out += `<div class="lb2">引退馬（1頭につき1年に1回）</div>
+  if (breedFilter === 'all' || breedFilter === 'mine') out += `<div class="lb2">引退馬（自家生産馬は何度でも・それ以外は1年に1回）</div>
     ${rt.length ? rt.map(h => breedCard(h, 'r' + h.id)).join('') : '<div class="empty">まだ引退馬がいません。引退した馬が繁殖に回ります</div>'}`;
   return out;
 }
@@ -2647,7 +2649,7 @@ function bulkDelHTML() {
 function breedCard(h, key) {
   const on = breedSel.includes(key), used = !h.ticket && bredThisYear(h), other = breedSel.map(breedHorse).find((x, i) => x && breedSel[i] !== key);
   const same = !on && other && other.sex === h.sex, dis = used || same || (!on && breedSel.length >= 2);
-  return `<div class="card bcard ${on ? 'on' : ''} ${h.ticket ? 'tk' : ''}" ${h.ticket ? `style="--rc:${h.rc}"` : ''}><div class="ch">${sexMark(h)}<b>${h.name}</b>${worldTag(h)}${!h.ticket && hw(h) === 1 && w2Parent(h) ? '<span class="wtag gate">子は幻境へ</span>' : ''}${h.ticket ? `<span class="rar" style="background:${h.rc}">${h.rar}</span><span class="genb stud">${h.sex === '牝' ? '繁殖牝馬' : '種牡馬'}</span>` : `<span class="genb">${h.gen || 1}代目</span>`}
+  return `<div class="card bcard ${on ? 'on' : ''} ${h.ticket ? 'tk' : ''}" ${h.ticket ? `style="--rc:${h.rc}"` : ''}><div class="ch">${sexMark(h)}<b>${h.name}</b>${worldTag(h)}${!h.ticket && homebred(h) ? '<span class="hbtag">自家生産</span>' : ''}${!h.ticket && hw(h) === 1 && w2Parent(h) ? '<span class="wtag gate">子は幻境へ</span>' : ''}${h.ticket ? `<span class="rar" style="background:${h.rc}">${h.rar}</span><span class="genb stud">${h.sex === '牝' ? '繁殖牝馬' : '種牡馬'}</span>` : `<span class="genb">${h.gen || 1}代目</span>`}
     <button class="bpick ${on ? 'on' : ''}" data-bpick="${key}" ${dis && !on ? 'disabled' : ''}>${on ? '選択中 ✓' : used ? '今年は配合済み' : same ? '同じ性別' : '親にする'}</button></div>
     <div class="cr">${h.ticket ? `配合券（1回きり）・ ${h.coatName}` : `戦績 ${h.rec.join('-')} ・ ${achTxt(h)}`}</div>
     ${statValLine(h.st)}${h.sire ? `<div class="cr ped">父 ${h.sire} × 母 ${h.dam}</div>` : ''}
