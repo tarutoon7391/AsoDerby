@@ -1409,8 +1409,13 @@ function genNPC(cls, sd = 3, boost = 0) {
   return st;
 }
 // 能力値 = 距離ごとの重み付き合計 + 馬場適性 + 雨補正
+// 健康150を超えた分のおまけ(150までの効果は体力・ケガ・調子でもう頭打ちなので、その先の使い道)
+const HLT_OVER = 150;
+const hltAbility = hlt => Math.min(3, Math.max(0, (hlt - HLT_OVER) / 100));        // 能力 +1/健康100、最大+3(健康450)
+const hltRaceCost = hlt => 20 * (1 - Math.min(0.25, Math.max(0, (hlt - HLT_OVER) / 1000)));   // レース後の体力消費20→最小15(健康400)。休養(+35)の意味は残す
 function calcAbility(st) {
   let a = 0; for (const k in DIST_W) a += DIST_W[k] * st[k];
+  a += hltAbility(st.hlt || 0);
   a += APT_ADJ[rankOf(race.surface === '芝' ? st.turf : st.dirt)];
   a += WET[race.baba] * RAIN_ADJ[rankOf(st.rain)];
   return a;
@@ -2133,7 +2138,7 @@ const TRAIN_ICON = { spd: '🐎', sta: '🏊', brs: '⚡', gut: '⛰️', hlt: '
 const TRAIN_DESC = {
   spd: '僚馬と並んで全力で追い切る。スピードが伸びる', sta: '水の中を泳いで心肺を鍛える。スタミナが伸びる',
   brs: '終いだけ一気に脚を使って前の馬を抜き去る。瞬発力が伸びる', gut: '急な坂を何本も駆け上がる。根性が伸びる',
-  hlt: '人が引いてゆっくり歩かせ、体を整える。健康が伸びる', turf: '本番と同じ芝コースで走り込む。芝適性が伸びる',
+  hlt: '人が引いてゆっくり歩かせ、体を整える。健康が伸びる（150を超えると、レースでの強さとレース後の疲れにも少しずつ効く）', turf: '本番と同じ芝コースで走り込む。芝適性が伸びる',
   dirt: '深い砂浜で脚元を鍛える。ダート適性が伸びる', rain: 'わざと土砂降りの重い馬場で走る。雨耐性が伸びる',
   c_sg: '坂路で僚馬と競り合う。スピードと根性がまとめて伸びるが、かなり疲れる',
   c_sb: 'ウッドチップコースで終いを伸ばす。スピードと瞬発力がまとめて伸びるが、かなり疲れる',
@@ -2767,7 +2772,7 @@ stableEl.addEventListener('click', ev => {
 function applyResult(h, pos, c, name) {
   const prize = pos <= 5 ? Math.floor(PRIZE[c] * PRIZE_RATE[pos - 1]) : 0, wr = { n: name || weekRace(game.week).n };
   money += prize; h.prize += prize; h.rec[Math.min(pos, 4) - 1]++;
-  h.hp = Math.max(0, h.hp - 20);
+  h.hp = Math.max(0, h.hp - hltRaceCost(h.st.hlt));
   let msg = `${h.name}：${wr.n} ${pos}着${prize ? `（賞金 ${yen(prize)}）` : ''}`;
   if (pos === 1) {
     h.wins = h.wins || {}; h.wins[c] = (h.wins[c] || 0) + 1;
