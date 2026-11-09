@@ -1891,10 +1891,11 @@ const GRADES = [
   { n: '最高級', fac: '海外施設', cost: 30000, rate: 1.25, gain: 3.0 },
   { n: '至高', fac: '夢の牧場', cost: 100000, rate: 1.5, gain: 4.2 },
   // 上級調教：お金が余っている人向け。値段のわりに伸びはゆるやか
-  { n: '極', fac: '天空厩舎', cost: 500000, rate: 1.6, gain: 5.0, adv: true },
-  { n: '王', fac: '王家牧場', cost: 1000000, rate: 1.7, gain: 5.6, adv: true },
-  { n: '神', fac: '伝説の地', cost: 5000000, rate: 1.8, gain: 6.2, adv: true },
-  { n: '天', fac: '神域', cost: 10000000, rate: 2.0, gain: 6.8, adv: true },
+  // 基本調教の伸び方(+0.5, +0.7, +0.8, +1.2)の続きで、1段ごとに伸び幅が大きくなる
+  { n: '極', fac: '天空厩舎', cost: 500000, rate: 1.6, gain: 5.6, adv: true },
+  { n: '王', fac: '王家牧場', cost: 1000000, rate: 1.7, gain: 7.2, adv: true },
+  { n: '神', fac: '伝説の地', cost: 5000000, rate: 1.8, gain: 9.0, adv: true },
+  { n: '天', fac: '神域', cost: 10000000, rate: 2.0, gain: 11.0, adv: true },
 ];
 let trainAdv = null;                                              // 調教グレードの表示ページ(null=選択中の段に合わせる)
 const GACHA_COST = 3000;
