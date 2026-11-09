@@ -438,6 +438,10 @@ button.main{background:#2ecc71;color:#fff}
 #stable .sched.w2{background:linear-gradient(180deg,#2b1f5c,#45307e);color:#efe6ff}
 #stable .sched.w2 .sct{color:#e8d8ff}
 #stable.w2 .shd{background:linear-gradient(180deg,#3a2a6a,#241a48)!important}
+#stable .rworld{display:flex;gap:6px;margin:0 0 6px}
+#stable .rworld button{flex:1;padding:7px 4px;border-radius:999px;font-size:12px;font-weight:900;background:#f3e3d0;color:#6b4a2a;border:2px solid #e1cda8}
+#stable .rworld button.on{background:#6aa84f;border-color:#4e8a39;color:#fff}
+#stable .rworld button.w2.on{background:linear-gradient(135deg,#2b1f5c,#5b3f9a);border-color:#8a6cc4;color:#fff}
 #stable .rsort.w2 button.on{background:linear-gradient(135deg,#3a2a6a,#6a4bb0);border-color:#8a6cc4;color:#fff}
 #stable .rrow .seen{flex:none;font-size:9.5px;font-weight:700;color:#8a7a62;white-space:nowrap}
 #stable .rrow .seen.on{color:#2e9d4a}
@@ -2413,6 +2417,7 @@ function flushReports() {
 const horseForVs = h => h && ({ id: h.id, name: h.name, style: h.style, coat: h.coat, mane: h.mane, silk: h.silk, socks: h.socks, blaze: h.blaze, st: h.st, cond: 2, coatName: h.coatName, sex: h.sex });
 const isHost = () => !!(online.room && online.room.host === player.id);
 function onlineAction(act, d, el) {
+  if (act === 'rworld') { online.rankWorld = +d.v; renderStable(); return; }
   if (act === 'sub') { onlineSub = d.v; if (d.v === 'rank' && sock && online.connected) sock.emit('getRanking'); renderStable(); return; }
   if (act === 'name') {
     const inp = document.getElementById('onName'), v = inp ? inp.value.trim().slice(0, 12) : '';
@@ -2542,8 +2547,9 @@ function rankingHTML() {
   const defs = { profit: ['通算収支', p => p.pay - p.bet, v => (v >= 0 ? '+' : '') + yen(v)], best: ['最高払戻', p => p.best || 0, yen],
     g1: ['G1勝利', p => p.g1 || 0, v => v + '勝'], lg: ['レジェンド', p => p.lg || 0, v => v + '勝'],
     g1x: ['幻G1勝利', p => p.g1x || 0, v => v + '勝'], lgx: ['幻境L', p => p.lgx || 0, v => v + '勝'], top: ['最強馬', p => p.top ? p.top.prize : 0, yen] };
-  // 幻境を表示している間は、G1・レジェンドの枠が幻境版に入れ替わる(幻境に馬がいる人だけのランキング)
-  const w2v = viewW() === 2, swap = { g1: 'g1x', lg: 'lgx', g1x: 'g1', lgx: 'lg' };
+  // 「通常／幻境」の切り替え(誰でも見られる)。幻境はG1・レジェンドの枠が幻境版に入れ替わり、幻境に馬がいる人だけが載る
+  if (online.rankWorld == null) online.rankWorld = viewW();
+  const w2v = online.rankWorld === 2, swap = { g1: 'g1x', lg: 'lgx', g1x: 'g1', lgx: 'lg' };
   if (w2v !== (online.rankSort === 'g1x' || online.rankSort === 'lgx') && swap[online.rankSort]) online.rankSort = swap[online.rankSort];
   if (!defs[online.rankSort]) online.rankSort = 'profit';
   const tabs = w2v ? ['profit', 'best', 'g1x', 'lgx', 'top'] : ['profit', 'best', 'g1', 'lg', 'top'];
@@ -2552,7 +2558,8 @@ function rankingHTML() {
   const myIdx = list.findIndex(p => p.pid === player.id);
   const sub = p => bet ? `${p.n}点 ・ 的中${p.hits}` : S === 'top' ? `🐎 ${escO(p.top.name)}` : (h => h ? `🐎 ${escO(h.name)}（${h.n}勝）` : '')({ g1: p.g1h, lg: p.lgh, g1x: p.g1xh, lgx: p.lgxh }[S]);
   const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><div class="rmid"><b>${escO(p.name)}</b><small>${seenTag(p)}${sub(p) ? `<span class="rsub">${sub(p)}</span>` : ''}</small></div><em>${fmt(val(p))}</em></div>`;
-  return `<div class="rsort ${w2v ? 'w2' : ''}">${tabs.map(k => [k, defs[k]]).map(([k, [n]]) => `<button data-on="sort" data-v="${k}" class="${S === k ? 'on' : ''}">${n}</button>`).join('')}<button data-on="refresh" class="rf">↻</button></div>
+  return `<div class="rworld"><button data-on="rworld" data-v="1" class="${w2v ? '' : 'on'}">通常</button><button data-on="rworld" data-v="2" class="w2 ${w2v ? 'on' : ''}">🔮 幻境</button></div>
+    <div class="rsort ${w2v ? 'w2' : ''}">${tabs.map(k => [k, defs[k]]).map(([k, [n]]) => `<button data-on="sort" data-v="${k}" class="${S === k ? 'on' : ''}">${n}</button>`).join('')}<button data-on="refresh" class="rf">↻</button></div>
     <div class="hint">${bet ? '普段のレースで買った馬券の成績が自動で集計されます' : S === 'top' ? '所持馬(現役・引退)の中で一番賞金を稼いだ馬と、その獲得賞金' : S === 'g1' ? '自分の馬が勝ったG1(海外G1を含む)の通算勝利数' : S === 'lg' ? '自分の馬が勝ったレジェンドカップの通算勝利数'
       : S === 'g1x' ? '🔮 幻境：自分の馬が勝った幻・G1(異界G1を含む)の通算勝利数。幻境に馬がいる人だけ' : '🔮 幻境：自分の馬が勝った幻境レジェンドの通算勝利数。幻境に馬がいる人だけ'}</div>
     ${list.length ? list.slice(0, 30).map(row).join('') : '<div class="empty">まだ記録がありません。馬券を買ってレースを観戦しよう</div>'}
