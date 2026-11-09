@@ -1535,7 +1535,9 @@ function drawOrder() {
 function planFinish() {
   planned = true;
   const VMAX = 20.5, vmax = r => SUPER.has(r.o.style) ? 22 : VMAX, gaps = [0];
-  for (let k = 1; k < N_HORSE; k++) gaps.push(gaps[k - 1] + (k === 1 ? 0.05 + Math.random() * 0.35 : 0.03 + Math.random() * 0.45));
+  // 勝ち馬が2着馬より強いほど、1〜2着の差が少しだけ開く(強さの比の対数×0.1秒、最大+0.5秒 ≒ 3.5馬身)
+  const w1 = wt[planOrder[0]], w2 = wt[planOrder[1]], dom = w1 && w2 ? Math.min(0.5, Math.max(0, Math.log(w1 / w2)) * 0.1) : 0;
+  for (let k = 1; k < N_HORSE; k++) gaps.push(gaps[k - 1] + (k === 1 ? 0.05 + Math.random() * 0.35 + dom * (0.6 + Math.random() * 0.8) : 0.03 + Math.random() * 0.45));
   const lead = Math.max(...runners.map(r => r.trav));
   let T0 = raceT + (D - lead) / 18;
   planOrder.forEach((h, k) => { const r = runners[h]; T0 = Math.max(T0, raceT + runTime(r.v, vmax(r), D - r.trav) - gaps[k] + 0.05); });
