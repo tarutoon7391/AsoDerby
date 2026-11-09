@@ -2697,7 +2697,7 @@ function renderStable() {
       (() => { const list = game.horses.filter(h => hw(h) === viewW());
         return list.length ? `<div class="hint">馬をタップすると放牧地で様子を見ながら育成できます</div>` + list.map(horseRow).join('')
           : viewW() === 2 ? '<div class="empty">第2層にいる現役馬はいません。レジェンドカップを3勝した馬の子が第2層で生まれます</div>' : '<div class="empty">まだ馬がいません。「セリ」か「ガチャ」で馬を手に入れよう</div>'; })() +
-      `<button class="resetbtn" data-askreset>🗑 データを消して最初から始める</button>`;
+      '';                                                   // 「データを消して最初から」ボタンは廃止
   } else if (stableTab === 'sale') {
     body = `<div class="hint">毎週4頭が上場されます（厩舎は最大${MAX_HORSES}頭）</div>` + game.sale.map(saleCard).join('');
   } else if (stableTab === 'online') {
