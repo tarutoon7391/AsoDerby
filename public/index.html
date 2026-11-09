@@ -438,7 +438,7 @@ button.main{background:#2ecc71;color:#fff}
 #stable .sched.w2{background:linear-gradient(180deg,#2b1f5c,#45307e);color:#efe6ff}
 #stable .sched.w2 .sct{color:#e8d8ff}
 #stable.w2 .shd{background:linear-gradient(180deg,#3a2a6a,#241a48)!important}
-#stable .rrow .seen{margin-left:6px;font-size:9.5px;font-weight:700;color:#8a7a62;white-space:nowrap}
+#stable .rrow .seen{flex:none;font-size:9.5px;font-weight:700;color:#8a7a62;white-space:nowrap}
 #stable .rrow .seen.on{color:#2e9d4a}
 #stable .bfilter{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px}
 #stable .bfilter button{--rc:#8b5a2b;padding:5px 10px;font-size:11px;font-weight:800;border-radius:999px;background:#fff;border:1.5px solid var(--rc);color:var(--rc)}
@@ -498,8 +498,10 @@ button.main{background:#2ecc71;color:#fff}
 #stable .rrow.me{background:#fff3d6;border-color:#f2b632;box-shadow:0 0 0 2px rgba(242,182,50,.35)}
 #stable .rrow .rk{flex:none;width:26px;height:26px;border-radius:50%;background:#e8dcc4;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#4a3518}
 #stable .rrow .rk.top{background:#f2c94c}
-#stable .rrow b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
-#stable .rrow small{font-size:10px;opacity:.65;white-space:nowrap}
+#stable .rrow .rmid{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+#stable .rrow b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+#stable .rrow small{display:flex;gap:6px;font-size:10px;white-space:nowrap;overflow:hidden;min-width:0}
+#stable .rrow .rsub{opacity:.65;overflow:hidden;text-overflow:ellipsis;min-width:0}
 #stable .rrow em{font-style:normal;font-weight:800;font-size:13px;color:#2e7d32;white-space:nowrap}
 #stable .vbox{background:#fff8e6;border:1px solid #e6cf9c;border-radius:12px;padding:10px 12px;margin-top:10px;display:flex;flex-direction:column;gap:6px;color:#4a3518}
 #stable .vbox b{font-size:14px}
@@ -2536,7 +2538,7 @@ function rankingHTML() {
   const list = [...online.ranking].filter(p => bet ? p.n : S === 'top' ? p.top : p.st).sort((a, b) => val(b) - val(a));
   const myIdx = list.findIndex(p => p.pid === player.id);
   const sub = p => bet ? `${p.n}点 ・ 的中${p.hits}` : S === 'top' ? `🐎 ${escO(p.top.name)}` : (h => h ? `🐎 ${escO(h.name)}（${h.n}勝）` : '')(S === 'g1' ? p.g1h : p.lgh);
-  const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><b>${escO(p.name)}${seenTag(p)}</b><small>${sub(p)}</small><em>${fmt(val(p))}</em></div>`;
+  const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><div class="rmid"><b>${escO(p.name)}</b><small>${seenTag(p)}${sub(p) ? `<span class="rsub">${sub(p)}</span>` : ''}</small></div><em>${fmt(val(p))}</em></div>`;
   return `<div class="rsort">${Object.entries(defs).map(([k, [n]]) => `<button data-on="sort" data-v="${k}" class="${S === k ? 'on' : ''}">${n}</button>`).join('')}<button data-on="refresh" class="rf">↻</button></div>
     <div class="hint">${bet ? '普段のレースで買った馬券の成績が自動で集計されます' : S === 'top' ? '所持馬(現役・引退)の中で一番賞金を稼いだ馬と、その獲得賞金' : S === 'g1' ? '自分の馬が勝ったG1(海外G1を含む)の通算勝利数' : '自分の馬が勝ったレジェンドカップの通算勝利数'}</div>
     ${list.length ? list.slice(0, 30).map(row).join('') : '<div class="empty">まだ記録がありません。馬券を買ってレースを観戦しよう</div>'}
