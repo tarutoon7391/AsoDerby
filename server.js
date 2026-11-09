@@ -45,7 +45,7 @@ function getPlayer(pid, name) {
   return p;
 }
 const pubStats = p => ({ pid: p.pid, name: p.name, bet: p.bet, pay: p.pay, hits: p.hits, n: p.n, best: p.best, vsWins: p.vsWins, vsRaces: p.vsRaces,
-  st: !!p.st, g1: p.g1 || 0, lg: p.lg || 0, top: p.top || null });
+  st: !!p.st, g1: p.g1 || 0, lg: p.lg || 0, top: p.top || null, g1h: p.g1h || null, lgh: p.lgh || null });
 const ranking = () => Object.values(players).filter(p => p.name && (p.n || p.vsRaces || p.st)).map(pubStats);
 
 // ===== アカウント(ユーザーID・プレイヤー名・パスワード) =====
@@ -155,6 +155,8 @@ io.on('connection', sock => {
     p.st = true; p.g1 = Math.max(0, Math.min(1e6, Math.floor(+d.g1 || 0))); p.lg = Math.max(0, Math.min(1e6, Math.floor(+d.lg || 0)));
     const t = d.top && typeof d.top === 'object' ? d.top : null;
     p.top = t && t.name ? { name: String(t.name).slice(0, 20), prize: Math.max(0, Math.min(1e13, Math.floor(+t.prize || 0))) } : null;
+    const ace = a => a && typeof a === 'object' && a.name ? { name: String(a.name).slice(0, 20), n: Math.max(0, Math.min(1e6, Math.floor(+a.n || 0))) } : null;
+    p.g1h = ace(d.g1h); p.lgh = ace(d.lgh);
     save();
   });
   sock.on('setName', name => {

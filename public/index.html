@@ -1798,7 +1798,11 @@ function saveAll() { try { localStorage.setItem('blockhorse_save', JSON.stringif
 function myStats() {
   const all = [...(game.horses || []), ...(game.retired || [])];
   const top = all.reduce((b, h) => !b || (h.prize || 0) > (b.prize || 0) ? h : b, null);
-  return { g1: game.g1Total || 0, lg: game.lgTotal || 0, top: top && top.prize > 0 ? { name: top.name, prize: top.prize } : null };
+  // そのランキングの功績を一番残した馬(G1勝利数・レジェンド勝利数が最多の馬)
+  const ace = f => { const h = all.reduce((b, x) => !b || f(x) > f(b) ? x : b, null); return h && f(h) > 0 ? { name: h.name, n: f(h) } : null; };
+  const W = h => h.wins || {};
+  return { g1: game.g1Total || 0, lg: game.lgTotal || 0, top: top && top.prize > 0 ? { name: top.name, prize: top.prize } : null,
+    g1h: ace(h => (W(h)[5] || 0) + (W(h)[6] || 0)), lgh: ace(h => W(h)[7] || 0) };
 }
 let statsT = 0;
 function sendStats() {
@@ -2326,7 +2330,7 @@ function rankingHTML() {
   const S = online.rankSort, [label, val, fmt] = defs[S], bet = S === 'profit' || S === 'best';
   const list = [...online.ranking].filter(p => bet ? p.n : S === 'top' ? p.top : p.st).sort((a, b) => val(b) - val(a));
   const myIdx = list.findIndex(p => p.pid === player.id);
-  const sub = p => bet ? `${p.n}点 ・ 的中${p.hits}` : S === 'top' ? `🐎 ${escO(p.top.name)}` : `${p.top ? `最強馬 ${escO(p.top.name)}` : ''}`;
+  const sub = p => bet ? `${p.n}点 ・ 的中${p.hits}` : S === 'top' ? `🐎 ${escO(p.top.name)}` : (h => h ? `🐎 ${escO(h.name)}（${h.n}勝）` : '')(S === 'g1' ? p.g1h : p.lgh);
   const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><b>${escO(p.name)}</b><small>${sub(p)}</small><em>${fmt(val(p))}</em></div>`;
   return `<div class="rsort">${Object.entries(defs).map(([k, [n]]) => `<button data-on="sort" data-v="${k}" class="${S === k ? 'on' : ''}">${n}</button>`).join('')}<button data-on="refresh" class="rf">↻</button></div>
     <div class="hint">${bet ? '普段のレースで買った馬券の成績が自動で集計されます' : S === 'top' ? '所持馬(現役・引退)の中で一番賞金を稼いだ馬と、その獲得賞金' : S === 'g1' ? '自分の馬が勝ったG1(海外G1を含む)の通算勝利数' : '自分の馬が勝ったレジェンドカップの通算勝利数'}</div>
