@@ -127,6 +127,8 @@ button.main{background:#2ecc71;color:#fff}
 .rk{font-style:normal;display:inline-block;min-width:13px;padding:0 2px;border-radius:3px;text-align:center;font-size:9px;font-weight:900;color:#fff;line-height:13px;text-shadow:0 0 2px rgba(0,0,0,.5)}
 #focus .rk{font-size:11px;line-height:16px;min-width:18px}
 #bet .row.mine{background:rgba(255,77,109,.16)}
+#bet .row.strong{position:relative;box-shadow:inset 0 0 0 1px rgba(255,214,120,.55),inset 0 0 12px rgba(255,200,90,.22);border-radius:6px;animation:strongGlow 2.4s ease-in-out infinite}
+@keyframes strongGlow{50%{box-shadow:inset 0 0 0 1px rgba(255,224,150,.8),inset 0 0 18px rgba(255,200,90,.38)}}
 #bet .myh{display:inline-block;font-size:9px;color:#ff4d6d;font-weight:900;margin-right:4px}
 #stable{display:none;position:fixed;inset:0;flex-direction:column;background:#0d1824;color:#fff;font-size:13px;z-index:30}
 #stable .shd{flex:none;padding:10px 10px 6px;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -1395,6 +1397,7 @@ function genField(cls) {
   if (t < 0.33) { sd = 4; boosts[idx[0]] = 15 + Math.random() * 10; race.type = '1強'; }
   else if (t < 0.66) { sd = 5; boosts[idx[0]] = 10; boosts[idx[1]] = 10; race.type = '2強'; }
   else { sd = 6; race.type = '混戦'; }
+  race.strong = Object.keys(boosts).map(Number);                      // 強敵の枠(出馬表でうっすら光らせる)
   return runners.map(r => genNPC(cls, sd, boosts[r.i] || 0));
 }
 function genNPC(cls, sd = 3, boost = 0) {
@@ -1450,6 +1453,7 @@ function newOdds(spec = {}) {
   assignStyles();                                                       // NPCの脚質を抽選
   for (const i in ownedSlots) runners[i].o.style = ownedSlots[i].style;  // 自分の馬は固定
   for (const i in ownedSlots) stats[i] = ownedSlots[i].st;
+  race.strong = (race.strong || []).filter(i => !ownedSlots[i]);
   placeMarkers();
   { const mine = Object.keys(ownedSlots); camTarget = mine.length ? +mine[0] : pop.length ? 0 : 0; }
   cond = stats.map((st, i) => ownedSlots[i] ? ownedSlots[i].cond : rollCond(st.hlt));
@@ -1607,7 +1611,7 @@ function renderBet() {
     else if (axis < 0) right = '<span class="tap">選択</span>';
     else if (isAxis) right = `<span class="axis">${betType === 'umatan' ? '1着' : '軸'}</span>`;
     else right = oddsBtn(betType, betType === 'umatan' ? [axis, i] : normSel('umaren', [axis, i]));
-    return `<div class="row ${isAxis ? 'sel' : ''} ${focusH === i ? 'fc' : ''} ${ownedSlots[i] ? 'mine' : ''}" data-row="${i}">
+    return `<div class="row ${isAxis ? 'sel' : ''} ${focusH === i ? 'fc' : ''} ${ownedSlots[i] ? 'mine' : ''} ${(race.strong || []).includes(i) ? 'strong' : ''}" data-row="${i}">
       ${badge(i)}<div class="nm">${ownedSlots[i] ? '<span class="myh">★自分の馬</span>' : ''}${r.o.name}<small>${styleTag(r.o.style)} ・ ${condIcon(i)} ${COND[cond[i]].n}</small><div class="sts">${statLine(i)}</div></div>
       <div class="pp">${pop[i]}<small>人気</small></div>${right}</div>`;
   }).join('');
