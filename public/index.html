@@ -205,10 +205,11 @@ button.main{background:#2ecc71;color:#fff}
 #train .tnext{margin-top:auto;padding:11px 26px;font-size:15px}
 #stable .sched{background:rgba(255,255,255,.05);border-radius:12px;padding:8px;margin-bottom:10px}
 #stable .sct{font-size:12px;font-weight:700;margin-bottom:6px}
-#stable .grid{display:grid;grid-template-columns:repeat(13,1fr);gap:2px}
+#stable .grid{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:2px}
 #stable .sc{display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 0;border-radius:5px}
 #stable .sc small{font-size:8px;opacity:.6}
-#stable .sc span{font-size:9px;font-weight:800;border-radius:3px;padding:1px 2px;min-width:22px;text-align:center}
+#stable .sc span{font-size:9px;font-weight:800;border-radius:3px;padding:1px 1px;min-width:0;width:100%;box-sizing:border-box;text-align:center;white-space:nowrap;overflow:hidden;letter-spacing:-.6px}
+#stable .sched.w2 .sc span{font-size:8px;letter-spacing:-1px}
 #stable .sc.g1 span{box-shadow:0 0 0 1px #ffd60a}
 #stable .sc.now{background:rgba(255,204,51,.35)}
 #stable .sc.past{opacity:.35}
@@ -410,6 +411,20 @@ button.main{background:#2ecc71;color:#fff}
 #stable .isub button{flex:1;padding:9px 6px;font-size:13px;background:#f3e3d0;color:#6b4a2a;border:1px solid #e1cda8;position:relative}
 #stable .isub button.on{background:#8b5a2b;color:#fff;border-color:#8b5a2b}
 #stable .isub em{font-style:normal;position:absolute;top:-6px;right:-4px;background:#e53935;color:#fff;font-size:10px;border-radius:9px;padding:1px 6px}
+#stable .wtabs{display:flex;gap:6px;margin:0 0 10px}
+#stable .wtabs button{flex:1;display:flex;align-items:baseline;justify-content:center;gap:6px;padding:9px 6px;border-radius:12px;background:#f3e3d0;color:#6b4a2a;border:2px solid #e1cda8}
+#stable .wtabs button b{font-size:13px}
+#stable .wtabs button span{font-size:12px;font-weight:900}
+#stable .wtabs button small{font-size:10px;opacity:.7}
+#stable .wtabs .w1.on{background:#6aa84f;border-color:#4e8a39;color:#fff}
+#stable .wtabs .w2{background:linear-gradient(135deg,#2b1f5c,#5b3f9a);color:#e9dcff;border-color:#8a6cc4}
+#stable .wtabs .w2.on{box-shadow:0 0 0 2px #e8c24a,0 0 14px rgba(180,140,255,.8);color:#fff}
+#stable .wtabs .w2:not(.on),#stable .wtabs .w1:not(.on){opacity:.75}
+#stable .wtag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:900;color:#fff;background:linear-gradient(135deg,#5b3f9a,#b06ab3);vertical-align:middle}
+#stable .wtag.gate{background:linear-gradient(135deg,#e8c24a,#b06ab3)}
+#stable .sched.w2{background:linear-gradient(180deg,#2b1f5c,#45307e);color:#efe6ff}
+#stable .sched.w2 .sct{color:#e8d8ff}
+#stable.w2 .shd{background:linear-gradient(180deg,#3a2a6a,#241a48)!important}
 #stable .bfilter{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px}
 #stable .bfilter button{--rc:#8b5a2b;padding:5px 10px;font-size:11px;font-weight:800;border-radius:999px;background:#fff;border:1.5px solid var(--rc);color:var(--rc)}
 #stable .bfilter button.on{background:var(--rc);color:#fff}
@@ -1010,6 +1025,25 @@ const DATA = [
   { name: 'ギンガテイオー', style: '追込', coat: 0xa7a7a7, mane: 0x6a6a6a, silk: 0x264653, socks: [] },
   { name: 'アオゾラジェット', style: '逃げ', coat: 0x5a3820, mane: 0x1c120a, silk: 0x00b4d8, socks: ['RF', 'LF'] },
 ];
+// 第2層「幻境」のNPC。名前・毛色・勝負服をすべて一新
+const DATA2 = [
+  { name: 'ミラージュオーロラ', style: '逃げ', coat: 0xe9e4f2, mane: 0xb9a8e0, silk: 0x7b2ff7, socks: ['LH'], blaze: true },
+  { name: 'ゲツエイノカナタ', style: '先行', coat: 0x24203a, mane: 0x0c0a16, silk: 0x2b2d6e, socks: [] },
+  { name: 'ソウキュウノオウ', style: '差し', coat: 0x6a4b9c, mane: 0x2a1650, silk: 0x00c2a8, socks: ['LF', 'RF'], blaze: true },
+  { name: 'シンキロウ', style: '追込', coat: 0xc7b8a0, mane: 0x8c7a5c, silk: 0xff7a59, socks: [] },
+  { name: 'ムゲンノツバサ', style: '先行', coat: 0xf4f2ee, mane: 0xd8d0e8, silk: 0x9b5de5, socks: [] },
+  { name: 'アマツホシクズ', style: '差し', coat: 0x3a2f55, mane: 0x14102a, silk: 0xf15bb5, socks: ['RH', 'LH'] },
+  { name: 'ヨミジノカゲ', style: '逃げ', coat: 0x101018, mane: 0x050508, silk: 0x5c0f2e, socks: [] },
+  { name: 'ニジノカケハシ', style: '追込', coat: 0x8a5a3c, mane: 0xf3e3c3, silk: 0x00bbf9, socks: ['RF'], blaze: true },
+  { name: 'オボロヅキ', style: 'まくり', coat: 0x9d93b5, mane: 0x5f5578, silk: 0xfee440, socks: ['LH', 'RH'], blaze: true },
+  { name: 'カゲロウノヒメ', style: '大逃げ', coat: 0x5a3a5e, mane: 0x23122a, silk: 0xff006e, socks: [] },
+  { name: 'ミカガミノミコト', style: '先行', coat: 0xb4c6d8, mane: 0x6c8098, silk: 0x3a86ff, socks: ['LF'] },
+  { name: 'トコヨノヤミ', style: '直線一気', coat: 0x1a1426, mane: 0x08060e, silk: 0x8338ec, socks: ['RH'] },
+  { name: 'アカツキゲンムー', style: '先行', coat: 0x9e4f3a, mane: 0x4a1e14, silk: 0xfb5607, socks: [] },
+  { name: 'ルリイロノユメ', style: '差し', coat: 0x4a6fa5, mane: 0x1e2f4f, silk: 0x80ffdb, socks: ['LF', 'LH'], blaze: true },
+  { name: 'セイウンゲンオウ', style: '追込', coat: 0xd9d4e6, mane: 0x9e94b8, silk: 0x6930c3, socks: [] },
+  { name: 'ユメマボロシ', style: '逃げ', coat: 0x7d5ba6, mane: 0x3b2160, silk: 0xc77dff, socks: ['RF', 'LF'] },
+];
 const N_HORSE = DATA.length;
 const waku = i => Math.floor(i * 8 / N_HORSE);    // 16頭なら2頭ずつ1〜8枠
 const LANE_W = 1.2;                               // ゲート1枠の幅
@@ -1325,7 +1359,17 @@ const rankOf = v => { let k = 0; for (let i = 1; i < RANKS.length; i++) if (v >=
 const CLASSES = [
   { n: '新馬戦', a: 21.5 }, { n: '未勝利', a: 19.5 }, { n: 'OP', a: 33.5 }, { n: 'G3', a: 42 },
   { n: 'G2', a: 51.5 }, { n: '国内G1', a: 63.5 }, { n: '海外G1', a: 69.5 }, { n: 'レジェンド', a: 79 },
+  // ---- 第2層「幻境」(index 8〜15)。並びは第1層と同じで、NPCがめちゃくちゃ強い ----
+  { n: '幻・新馬戦', a: 95, w2: true }, { n: '幻・未勝利', a: 90, w2: true }, { n: '幻・OP', a: 110, w2: true }, { n: '幻・G3', a: 125, w2: true },
+  { n: '幻・G2', a: 140, w2: true }, { n: '幻・G1', a: 160, w2: true }, { n: '異界G1', a: 175, w2: true }, { n: '幻境レジェンド', a: 195, w2: true },
 ];
+// 階層(ワールド)。第1層=通常、第2層=幻境。インフレしたら第3層を足していく想定
+const WORLDS = { 1: { n: '第1層', sub: '' }, 2: { n: '第2層', sub: '幻境', en: 'MIRAGE' } };
+const W2 = 8;                                                          // 第2層のクラスの始まり
+const hw = h => (h && h.world) || 1;                                    // 馬の所属階層
+const baseC = c => c >= W2 ? c - W2 : c;                                // 階層をまたいで同じ格(0新馬〜7レジェンド)
+const viewW = () => game.view === 2 && hasW2() ? 2 : 1;                 // いま表示している階層
+const hasW2 = () => [...(game.horses || []), ...(game.retired || [])].some(h => hw(h) === 2);
 const STATS = [['spd', '速', 'スピード'], ['sta', '持', 'スタミナ'], ['brs', '瞬', '瞬発力'], ['gut', '根', '根性'],
   ['hlt', '健', '健康'], ['turf', '芝', '芝'], ['dirt', 'ダ', 'ダート'], ['rain', '雨', '雨耐性']];
 const APT_ADJ = [-18, -12, -7, -3, 0, 2, 4, 6, 7, 8, 9];                 // 芝/ダート適性による能力値補正(E〜SSS)
@@ -1341,7 +1385,7 @@ const aptRank = () => pick([5, 4, 3, 2, 1], [0.1, 0.4, 0.3, 0.15, 0.05]);    // 
 function genRace() {
   const weather = pick(['晴', '曇', '雨'], [0.55, 0.25, 0.2]);
   const baba = weather === '晴' ? pick([0, 1], [0.85, 0.15]) : weather === '曇' ? pick([0, 1, 2], [0.5, 0.4, 0.1]) : pick([1, 2, 3], [0.2, 0.45, 0.35]);
-  race = { cls: CLASSES[Math.floor(Math.random() * CLASSES.length)], surface: Math.random() < 0.6 ? '芝' : 'ダート', weather, baba };
+  race = { cls: CLASSES[Math.floor(Math.random() * W2)], surface: Math.random() < 0.6 ? '芝' : 'ダート', weather, baba };
 }
 const raceTitle = () => `${race.name && race.cls.n !== race.name ? race.name + '(' + race.cls.n + ')' : race.cls.n} ${race.surface}${D}m ${{ 晴: '☀', 曇: '☁', 雨: '☂' }[race.weather]}${BABA[race.baba]}`;
 // レースの型：1強(1.x倍の本命) / 2強 / 混戦 を1/3ずつ。オッズにメリハリを出す
@@ -1358,6 +1402,7 @@ function genNPC(cls, sd = 3, boost = 0) {
   for (const k of ['spd', 'sta', 'brs', 'gut']) st[k] = L + 5 * randn();
   st.hlt = L + 8 * randn();
   st.turf = RANK_V[aptRank()]; st.dirt = RANK_V[aptRank()]; st.rain = RANK_V[aptRank()];
+  if (cls.w2) for (const k of ['turf', 'dirt', 'rain']) st[k] = 90 + Math.random() * 230;   // 幻境のNPCは適性もSSS〜ZZ
   return st;
 }
 // 能力値 = 距離ごとの重み付き合計 + 馬場適性 + 雨補正
@@ -1395,13 +1440,13 @@ function placeMarkers() {
 }
 function updateMarkers(t) { markers.forEach(m => { m.position.y = 3.7 + Math.sin(t * 4) * 0.18; m.rotation.y = t * 2; const d = camera.position.distanceTo(m.parent.position); m.scale.setScalar(Math.max(1, d / 45)); }); }
 function newOdds(spec = {}) {
-  genRace(); if (spec.cls) race.cls = spec.cls; race.name = spec.name; if (spec.surface) race.surface = spec.surface; race.venue = spec.venue; setDistance(spec.dist || 1200); applyRaceVisual();
+  genRace(); if (spec.cls) race.cls = spec.cls; race.world = race.cls.w2 ? 2 : 1; race.name = spec.name; if (spec.surface) race.surface = spec.surface; race.venue = spec.venue; setDistance(spec.dist || 1200); applyRaceVisual();
   stats = genField(race.cls);
   ownedSlots = {};
   const slots = shuffle([...Array(N_HORSE).keys()]);
   (spec.owned || []).forEach((h, k) => { ownedSlots[slots[k]] = h; });
   // 枠ごとに見た目を差し替え(自分の馬 or 元のNPC)
-  runners.forEach(r => setRunnerHorse(r.i, ownedSlots[r.i] ? horseLook(ownedSlots[r.i]) : DATA[r.i]));
+  runners.forEach(r => setRunnerHorse(r.i, ownedSlots[r.i] ? horseLook(ownedSlots[r.i]) : (race.world === 2 ? DATA2 : DATA)[r.i]));
   assignStyles();                                                       // NPCの脚質を抽選
   for (const i in ownedSlots) runners[i].o.style = ownedSlots[i].style;  // 自分の馬は固定
   for (const i in ownedSlots) stats[i] = ownedSlots[i].st;
@@ -1434,12 +1479,13 @@ const rain = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({ color
 rain.frustumCulled = false; rain.visible = false; scene.add(rain);
 function applyRaceVisual() {
   track.material.map = race.surface === '芝' ? turfTex : dirtTex; track.material.needsUpdate = true;
-  const sky = { 晴: 0x9cc8ee, 曇: 0xa9b3bd, 雨: 0x7d8792 }[race.weather];
+  const sky = race.world === 2 ? { 晴: 0x8a6cc4, 曇: 0x6e5a96, 雨: 0x4a3d6b }[race.weather] : { 晴: 0x9cc8ee, 曇: 0xa9b3bd, 雨: 0x7d8792 }[race.weather];   // 幻境は紫の空
   scene.background.setHex(sky); scene.fog.color.setHex(sky);
   scene.fog.far = race.weather === '雨' ? 900 : 1500;
   sun.intensity = { 晴: 0.85, 曇: 0.45, 雨: 0.3 }[race.weather];
   hemi.intensity = { 晴: 0.8, 曇: 0.85, 雨: 0.75 }[race.weather];
   track.material.color.setHex(race.baba >= 2 ? 0xc8c8c8 : race.baba === 1 ? 0xe4e4e4 : 0xffffff); // 渋るほど暗く
+  if (race.world === 2) track.material.color.lerp(new THREE.Color(0xa58be0), 0.35);   // 幻境はコースもうっすら紫
   rain.visible = race.weather === '雨';
 }
 function updateRain(dt) {
@@ -1614,7 +1660,7 @@ betSheet.addEventListener('click', ev => {
   else if (el.id === 'buyGo') {
     if (race.online) { if (!online.waiting) { money -= slipTotal(); saveMoney(); online.waiting = true; if (sock) sock.emit('ready'); } renderBet(); return; }
     money -= slipTotal(); saveMoney(); closeBet();
-    resetRace(); state = 'count'; countT = [7.6, 7.6, 7.6, 9.8, 9.8, 11.8, 11.8, 14][CLASSES.indexOf(race.cls)] || 7.6; return;
+    resetRace(); state = 'count'; countT = [7.6, 7.6, 7.6, 9.8, 9.8, 11.8, 11.8, 14][baseC(CLASSES.indexOf(race.cls))] || 7.6; return;
   }
   else if (el.id === 'refill') { money = 10000; saveMoney(); }
   else return;
@@ -1774,7 +1820,8 @@ addEventListener('resize', () => refreshView());
 
 // ================= 育成モード =================
 const WEEKS = 52, MAX_HORSES = 4, RETIRE_AGE = 6;               // 1年52週・最大4頭・6歳で引退
-const PRIZE = [25000, 20000, 50000, 100000, 180000, 500000, 1000000, 3000000];  // 1着賞金(クラス順)。週の給料以外の稼ぎ手段なので多め
+const PRIZE = [25000, 20000, 50000, 100000, 180000, 500000, 1000000, 3000000,
+  250000, 200000, 500000, 1000000, 1800000, 5000000, 10000000, 30000000];   // 第2層は10倍(上級調教の資金源)  // 1着賞金(クラス順)。週の給料以外の稼ぎ手段なので多め
 const PRIZE_RATE = [1, 0.4, 0.25, 0.15, 0.1];                     // 1〜5着の賞金割合
 const GRADES = [
   { n: '並', fac: '自厩舎', cost: 500, rate: 0.6, gain: 1.0 },
@@ -1896,10 +1943,12 @@ const avgCap = h => CORE_KEYS.slice(0, 4).reduce((a, k) => a + capOf(h, k), 0) /
 // 上限まで鍛えてG1を勝ち続けると、だいたい5世代目でレジェンドを勝てる水準(上限95前後)に届く
 function achOf(h) {
   if (h.ach !== undefined) return h.ach;
-  const W = h.wins || {};
+  const W0 = h.wins || {}, W = {}; for (let c = 0; c < 8; c++) W[c] = (W0[c] || 0) + (W0[c + W2] || 0);   // 第2層の勝ちも同じ格として数える
   return Math.min(3, 0.25 * Math.min(4, (W[3] || 0) + (W[4] || 0)) + 0.5 * Math.min(4, W[5] || 0) + (W[6] ? 1 : 0) + (W[7] ? 1.5 : 0));
 }
 const capGain = (a, b) => 2.5 + achOf(a) + achOf(b);            // 子の上限は親の実際の能力の平均＋(2.5〜8.5)
+// 第2層へ行ける親：レジェンドカップ通算3勝、または自身が第2層の馬
+const w2Parent = p => hw(p) === 2 || ((p.wins || {})[7] || 0) >= 3;
 function breedFoal(a, b) {
   const h = makeHorse(20, false), g = capGain(a, b);
   for (const k of CORE_KEYS) {
@@ -1914,6 +1963,7 @@ function breedFoal(a, b) {
   if (Math.random() < 0.7 && cs.coatName) { const ct = COAT_TYPES.find(c => c.n === cs.coatName); applyCoat(h, ct || randCoat(false)); }
   else applyCoat(h, randCoat(false));
   h.gen = Math.max(a.gen || 1, b.gen || 1) + 1; h.sire = a.name; h.dam = b.name;
+  h.world = w2Parent(a) || w2Parent(b) ? 2 : 1;
   return h;
 }
 // ===== 配合ガチャ：種牡馬・繁殖牝馬の「1回きりの配合券」が出る =====
@@ -1980,35 +2030,56 @@ const SCHEDULE = [
   [0, '新馬戦', 'ダート', '京都', 1800], [3, '武蔵野S', 'ダート', '東京', 1600], [5, 'マイルCS', '芝', '京都', 1600], [5, 'ジャパンカップ', '芝', '東京', 2400],
   [5, 'チャンピオンズC', 'ダート', '中京', 1800], [6, '香港カップ', '芝', 'シャティン', 2000], [5, '有馬記念', '芝', '中山', 2500], [7, 'レジェンドカップ', '芝', '中山', 2400],
 ].map(([c, n, s, v, d], i) => ({ week: i + 1, c, n, s, v, d }));
-const weekRace = w => SCHEDULE[(w - 1) % WEEKS];
-const CLS_SHORT = ['新馬', '未勝', 'OP', 'G3', 'G2', 'G1', '海外', 'L'];
-const CLS_COL = ['#5a6b7a', '#5a6b7a', '#2a6fb0', '#2e9d4a', '#d17a00', '#c9a227', '#b0306a', '#7a1fd1'];
+// 第2層「幻境」の52週。格の並びは第1層と同じ(クラスは+8)、レース名と開催地は幻境のもの
+const SCHEDULE2 = [
+  [3, '月影金杯', '芝', '月影', 2000], [0, '幻・新馬戦', '芝', '霧幻', 1600], [4, '蒼穹新春杯', '芝', '蒼穹', 2400], [2, '朧月S', '芝', '霧幻', 2000],
+  [4, '星屑ジャーニーC', '芝', '月影', 2200], [1, '幻・未勝利戦', 'ダート', '砂漠楼', 1600], [3, '砂塵の幻S', 'ダート', '砂漠楼', 1400], [5, '蜃気楼ダートC', 'ダート', '砂漠楼', 1600],
+  [0, '幻・新馬戦', 'ダート', '水鏡', 1800], [4, '水鏡記念', '芝', '水鏡', 1800], [2, '胡蝶S', '芝', '虹橋', 2000], [5, '閃光の幻杯', '芝', '虹橋', 1200],
+  [6, '天上ワールドC', 'ダート', '天上', 2000], [5, '夢幻杯', '芝', '霧幻', 2000], [1, '幻・未勝利戦', '芝', '水鏡', 1800], [5, '幻月賞', '芝', '月影', 2000],
+  [4, '翠玉賞', '芝', '蒼穹', 2400], [5, '天幻賞（春）', '芝', '蒼穹', 3200], [1, '幻・未勝利戦', '芝', '虹橋', 1400], [2, '白夜S', '芝', '霧幻', 1800],
+  [5, '幻境ダービー', '芝', '蒼穹', 2400], [5, '星霜記念', '芝', '蒼穹', 1600], [0, '幻・新馬戦', '芝', '虹橋', 1600], [3, '紫陽花C', '芝', '水鏡', 1800],
+  [5, '夢見草記念', '芝', '月影', 2200], [3, '真夏の夜の夢賞', '芝', '虹橋', 1800], [1, '幻・未勝利戦', '芝', '氷晶', 1200], [3, '氷晶記念', '芝', '氷晶', 2000],
+  [0, '幻・新馬戦', '芝', '氷晶', 1500], [3, '流星サマーダッシュ', '芝', '虹橋', 1000], [2, '陽炎S', '芝', '氷晶', 1200], [3, '不知火記念', '芝', '水鏡', 1200],
+  [4, '氷晶大賞', '芝', '氷晶', 2000], [1, '幻・未勝利戦', '芝', '水鏡', 1200], [2, '蛍火S', '芝', '虹橋', 1400], [4, '残月S', '芝', '月影', 1200],
+  [0, '幻・新馬戦', '芝', '月影', 1600], [4, '万華鏡オールカマー', '芝', '月影', 2200], [5, '刹那ステークス', '芝', '月影', 1200], [6, '永劫の門賞', '芝', '天上', 2400],
+  [4, '星辰王冠', '芝', '蒼穹', 1800], [5, '幻菊賞', '芝', '霧幻', 3000], [5, '天幻賞（秋）', '芝', '蒼穹', 2000], [2, '銀河S', '芝', '霧幻', 2000],
+  [0, '幻・新馬戦', 'ダート', '砂漠楼', 1800], [3, '砂海S', 'ダート', '砂漠楼', 1600], [5, '幻影マイルCS', '芝', '霧幻', 1600], [5, '幻境カップ', '芝', '蒼穹', 2400],
+  [5, '蜃気楼チャンピオンズC', 'ダート', '砂漠楼', 1800], [6, '天上カップ', '芝', '天上', 2000], [5, '夢幻記念', '芝', '月影', 2500], [7, 'ミラージュレジェンド', '芝', '月影', 2400],
+].map(([c, n, s, v, d], i) => ({ week: i + 1, c: c + W2, n, s, v, d }));
+const SCHED = (world = 1) => world === 2 ? SCHEDULE2 : SCHEDULE;
+const raceOf = (world, w = game.week) => SCHED(world)[(w - 1) % WEEKS];
+const weekRace = w => raceOf(viewW(), w);
+const CLS_SHORT = ['新馬', '未勝', 'OP', 'G3', 'G2', 'G1', '海外', 'L', '幻新', '幻未', '幻OP', '幻G3', '幻G2', '幻G1', '異界', '幻L'];
+const CLS_COL = ['#5a6b7a', '#5a6b7a', '#2a6fb0', '#2e9d4a', '#d17a00', '#c9a227', '#b0306a', '#7a1fd1',
+  '#5b5170', '#5b5170', '#4b4fb8', '#3b8f8a', '#b0569e', '#8e5be0', '#c2338a', '#3b1f7a'];
 const starts = h => h.rec.reduce((a, b) => a + b, 0);
 const winsAll = h => Object.values(h.wins || {}).reduce((a, b) => a + b, 0);
 function eligible(h, c) {
-  const st = starts(h), w = winsAll(h), W = h.wins || {};
+  const st = starts(h), w = winsAll(h), W = h.wins || {}, o = c >= W2 ? W2 : 0;
   if (h.injured) return [false, '負傷中'];
+  if ((c >= W2 ? 2 : 1) !== hw(h)) return [false, c >= W2 ? '第2層の馬のみ' : '第1層の馬のみ'];
+  c = baseC(c);
   if (c === 0) return st === 0 ? [true] : [false, '新馬戦はデビュー前の馬のみ'];
   if (c === 1) return w === 0 ? [true] : [false, '勝利経験のない馬のみ'];
   if (c === 2) return w >= 1 ? [true] : [false, '1勝以上が必要'];
-  if (c <= 5) return W[2] >= 1 ? [true] : [false, 'OP勝利が必要'];
-  if (c === 6) return W[5] >= 1 ? [true] : [false, '国内G1勝利が必要'];
+  if (c <= 5) return W[2 + o] >= 1 ? [true] : [false, 'OP勝利が必要'];
+  if (c === 6) return W[5 + o] >= 1 ? [true] : [false, o ? '幻・G1勝利が必要' : '国内G1勝利が必要'];
   return (h.yearG1 || 0) >= 3 ? [true] : [false, `今年のG1を3勝（現在${h.yearG1 || 0}勝）`];
 }
 // 出走できるのはスケジュールどおりのその週のレースだけ(上書きなし)
-function raceTarget(h) { return weekRace(game.week).c; }
-function heldRace() { return weekRace(game.week); }
+function raceTarget(h) { return raceOf(hw(h)).c; }
+function heldRace() { return raceOf(viewW()); }
 function canEnter(h) {
   if (h.rested) return [false, '今週は休養済み'];
-  const sc = weekRace(game.week), [ok, why] = eligible(h, sc.c);
+  const sc = raceOf(hw(h)), [ok, why] = eligible(h, sc.c);
   return ok ? [true, sc.c] : [false, why];
 }
 function statusName(h) {
   const W = h.wins || {};
   if (!starts(h)) return 'デビュー前';
   if (!winsAll(h)) return '未勝利';
-  if (W[5] || W[6] || W[7]) return 'G1馬';
-  if (W[2]) return 'OP勝ち';
+  if (W[5] || W[6] || W[7] || W[13] || W[14] || W[15]) return 'G1馬';
+  if (W[2] || W[10]) return 'OP勝ち';
   return '1勝馬';
 }
 const clsName = statusName;
@@ -2016,16 +2087,17 @@ let schedSel = 0;                                  // スケジュール表で�
 function scheduleHTML(compact) {
   const cur = game.week;
   if (compact) {
-    const wr = heldRace(null), nextG1 = SCHEDULE.find(r => r.week > cur && r.c >= 5) || SCHEDULE.find(r => r.c >= 5);
+    const SC = SCHED(viewW()), wr = heldRace(null), nextG1 = SC.find(r => r.week > cur && baseC(r.c) >= 5) || SC.find(r => baseC(r.c) >= 5);
     return `<div class="wk"><span class="cl" style="background:${CLS_COL[wr.c]}">${CLS_SHORT[wr.c]}</span>今週：<b>${wr.n}</b>${wr.over ? `<span class="ngk">（${wr.over.n}から変更）</span>` : ''}
       <small>次のG1：第${nextG1.week}週 ${nextG1.n}</small></div>`;
   }
-  return `<div class="sched"><div class="sct">${game.year}年目のスケジュール</div><div class="grid">${SCHEDULE.map(r =>
-    `<div class="sc ${r.week === cur ? 'now' : ''} ${r.week < cur ? 'past' : ''} ${r.c >= 5 ? 'g1' : ''} ${r.week === (schedSel || cur) ? 'sel' : ''}" data-sw="${r.week}">
+  const SC = SCHED(viewW());
+  return `<div class="sched ${viewW() === 2 ? 'w2' : ''}"><div class="sct">${game.year}年目のスケジュール${viewW() === 2 ? '（第2層 幻境）' : ''}</div><div class="grid">${SC.map(r =>
+    `<div class="sc ${r.week === cur ? 'now' : ''} ${r.week < cur ? 'past' : ''} ${baseC(r.c) >= 5 ? 'g1' : ''} ${r.week === (schedSel || cur) ? 'sel' : ''}" data-sw="${r.week}">
       <small>${r.week}</small><span style="background:${CLS_COL[r.c]}">${CLS_SHORT[r.c]}</span></div>`).join('')}</div>
-    ${(() => { const r = SCHEDULE[(schedSel || cur) - 1]; return r ? `<div class="scinfo"><span class="cl" style="background:${CLS_COL[r.c]}">${CLASSES[r.c].n}</span><b>${r.n}</b><em>${r.s}${r.d}m</em><small>${r.week === cur ? '今週' : `第${r.week}週`}<br>${r.v}</small></div>`
+    ${(() => { const r = SC[(schedSel || cur) - 1]; return r ? `<div class="scinfo"><span class="cl" style="background:${CLS_COL[r.c]}">${CLASSES[r.c].n}</span><b>${r.n}</b><em>${r.s}${r.d}m</em><small>${r.week === cur ? '今週' : `第${r.week}週`}<br>${r.v}</small></div>`
       : `<div class="scinfo hint2">マスをタップするとレースの詳細が出ます</div>`; })()}
-    <div class="g1list">${(() => { const up = SCHEDULE.filter(r => r.c >= 5 && r.week >= cur); return up.slice(0, 6).map(r => `<span>第${r.week}週 ${r.n}</span>`).join('') + (up.length > 6 ? `<span class="more">ほか${up.length - 6}レース</span>` : ''); })()}</div></div>`;
+    <div class="g1list">${(() => { const up = SC.filter(r => baseC(r.c) >= 5 && r.week >= cur); return up.slice(0, 6).map(r => `<span>第${r.week}週 ${r.n}</span>`).join('') + (up.length > 6 ? `<span class="more">ほか${up.length - 6}レース</span>` : ''); })()}</div></div>`;
 }
 const statValLine = st => `<div class="sgrid">${SHOWN_STATS.map(([k, ab, nm]) => { const r = rankOf(st[k]); return `<div class="sgc"><small>${nm}</small><i class="rk big" style="background:${RANK_C[r]}">${RANKS[r]}</i><b>${Math.round(st[k])}</b></div>`; }).join('')}</div>`;
 const statValLineOld = st => STATS.map(([k, ab]) => `<span class="st">${ab}${rankChip(st[k])}<small>${Math.round(st[k])}</small></span>`).join('');
@@ -2068,7 +2140,7 @@ const locked = h => h.trained || h.rested;
 const hpBar = h => `<div class="hpb"><span>体力</span><div class="bar"><i style="width:${h.hp}%;background:${h.hp > 60 ? '#6aa84f' : h.hp > 30 ? '#e8a33c' : '#d0533c'}"></i></div><span>${Math.round(h.hp)}</span></div>`;
 const condTxt = h => { const c = COND[h.cond]; return `<span class="arw" style="color:${c.c};transform:rotate(${c.a}deg)">➜</span>${c.n}`; };
 function horseCard(h) {
-  const a = h.act, inj = h.injured > 0, sc = weekRace(game.week), [ok, why] = canEnter(h);
+  const a = h.act, inj = h.injured > 0, sc = raceOf(hw(h)), [ok, why] = canEnter(h);
   const top = `<div class="ph"><b>${h.name}</b><span class="cls">${clsName(h)}</span><span>${condTxt(h)}</span>${inj ? '<span class="injt">負傷</span>' : ''}${h.trained ? '<span class="tag">トレ済</span>' : ''}${h.rested ? '<span class="tag">休養済</span>' : ''}${a.type === 'race' ? '<span class="tag r">出走予定</span>' : ''}</div>`;
   // 行動済み・負傷中は大きなスタンプで知らせる
   const stamp = (cls, ic, big, sub) => `<div class="stamp ${cls}"><div class="sc1"><span>${ic}</span><b>${big}</b></div><div class="sc2">${sub}</div></div>`;
@@ -2087,15 +2159,18 @@ function horseCard(h) {
   } else if (detailTab === 'train') {
     if (inj || locked(h)) body = lockMsg;
     else {
+      if (hw(h) !== 2 && GRADES[a.grade].adv) a.grade = 4;
       const g = GRADES[a.grade], t = TRAIN_OF[a.stat];
       if (!trainDetail) body = `<div class="tlist">${TRAININGS.map(x => `<button data-tstat="${x.k}" data-id="${h.id}" class="${x.ks ? 'combo' : ''}">${x.ks ? '<em class="tired">疲労大</em>' : ''}<span class="ti">${TRAIN_ICON[x.k]}</span><b>${x.n}</b><small>${statName(x.k)}</small></button>`).join('')}</div>`;
       else body = `<div class="tdh"><button class="tback" data-tlist>‹ 一覧</button><span class="ti">${TRAIN_ICON[t.k]}</span><b>${t.n}</b>
         <div class="tright"><div>${a.stat === 'cond' ? `調子 ${condTxt(h)}` : t.ks || HIDDEN_STATS.has(a.stat) ? `${t.ks && t.ks.length === 4 ? '基本能力すべて' : statName(a.stat)}を鍛える` : `${statName(a.stat)} ${rankChip(h.st[a.stat])} ${Math.round(h.st[a.stat])}`}</div></div></div>
       <div class="tdesc">${TRAIN_DESC[t.k]}</div>
-      ${(() => { const adv = trainAdv == null ? !!g.adv : trainAdv;
+      ${(() => {
+        const adv = hw(h) === 2 && (trainAdv == null ? !!GRADES[a.grade].adv : trainAdv);
         const btn = (x, gi) => `<button data-tgrade="${gi}" data-id="${h.id}" class="g${gi} ${a.grade === gi ? 'on' : ''}">${gi === 3 ? '<em>✦</em>' : gi === 4 ? '<em>👑</em>' : gi >= 5 ? `<em>${['💎', '🏰', '🌟', '⛩️'][gi - 5]}</em>` : ''}<span>${x.fac}</span><small>${x.cost >= 5e5 ? x.cost / 1e4 + '万円' : yen(x.cost)}</small></button>`;
         const list = GRADES.map((x, gi) => [x, gi]).filter(([x]) => !!x.adv === adv);
-        return `<div class="tgwrap ${adv ? 'adv' : ''}">${adv ? '<button class="tgpage" data-tadv="0"><b>‹</b><small>基本<br>調教へ</small></button>' : ''}<div class="tgrade round">${list.map(([x, gi]) => btn(x, gi)).join('')}</div>${adv ? '' : '<button class="tgpage" data-tadv="1"><small>上級<br>調教へ</small><b>›</b></button>'}</div>`; })()}
+        const canAdv = hw(h) === 2;                                   // 上級調教は第2層(幻境)の馬だけ
+        return `<div class="tgwrap ${adv ? 'adv' : ''}">${adv ? '<button class="tgpage" data-tadv="0"><b>‹</b><small>基本<br>調教へ</small></button>' : ''}<div class="tgrade round">${list.map(([x, gi]) => btn(x, gi)).join('')}</div>${adv || !canAdv ? '' : '<button class="tgpage" data-tadv="1"><small>上級<br>調教へ</small><b>›</b></button>'}</div>`; })()}
             <button class="main go" data-asktrain="${h.id}" ${money < g.cost ? 'disabled' : ''}>${TRAIN_OF[a.stat].n}（${g.fac}）を実行 ・ ${yen(g.cost)}</button>`;
     }
   } else if (detailTab === 'rest') {
@@ -2109,7 +2184,7 @@ function horseCard(h) {
         </div></div>
       <button class="main go" data-askrest="${h.id}">休養させる</button>`;
   } else if (detailTab === 'race') {
-    const nextG1 = SCHEDULE.find(r => r.week > game.week && r.c >= 5) || SCHEDULE.find(r => r.c >= 5);
+    const SC = SCHED(hw(h)), nextG1 = SC.find(r => r.week > game.week && baseC(r.c) >= 5) || SC.find(r => baseC(r.c) >= 5);
     body = `<div class="racebox"><span class="cl" style="background:${CLS_COL[sc.c]}">${CLS_SHORT[sc.c]}</span><b>${sc.n}</b><small>${sc.v} ${sc.s}${sc.d}m ・ ${CLASSES[sc.c].n} ・ 1着賞金 ${yen(PRIZE[sc.c])}</small></div>
       ${ok || a.type === 'race' ? '' : `<div class="ngk">出走できません：${why}</div>`}
       <button class="main go" data-act="race" data-id="${h.id}" ${ok || a.type === 'race' ? '' : 'disabled'}>${a.type === 'race' ? '出走を取り消す' : 'このレースに出走する'}</button>
@@ -2427,7 +2502,7 @@ function bulkDelHTML() {
 function breedCard(h, key) {
   const on = breedSel.includes(key), used = !h.ticket && bredThisYear(h), other = breedSel.map(breedHorse).find((x, i) => x && breedSel[i] !== key);
   const same = !on && other && other.sex === h.sex, dis = used || same || (!on && breedSel.length >= 2);
-  return `<div class="card bcard ${on ? 'on' : ''} ${h.ticket ? 'tk' : ''}" ${h.ticket ? `style="--rc:${h.rc}"` : ''}><div class="ch">${sexMark(h)}<b>${h.name}</b>${h.ticket ? `<span class="rar" style="background:${h.rc}">${h.rar}</span><span class="genb stud">${h.sex === '牝' ? '繁殖牝馬' : '種牡馬'}</span>` : `<span class="genb">${h.gen || 1}代目</span>`}
+  return `<div class="card bcard ${on ? 'on' : ''} ${h.ticket ? 'tk' : ''}" ${h.ticket ? `style="--rc:${h.rc}"` : ''}><div class="ch">${sexMark(h)}<b>${h.name}</b>${worldTag(h)}${!h.ticket && hw(h) === 1 && w2Parent(h) ? '<span class="wtag gate">子は幻境へ</span>' : ''}${h.ticket ? `<span class="rar" style="background:${h.rc}">${h.rar}</span><span class="genb stud">${h.sex === '牝' ? '繁殖牝馬' : '種牡馬'}</span>` : `<span class="genb">${h.gen || 1}代目</span>`}
     <button class="bpick ${on ? 'on' : ''}" data-bpick="${key}" ${dis && !on ? 'disabled' : ''}>${on ? '選択中 ✓' : used ? '今年は配合済み' : same ? '同じ性別' : '親にする'}</button></div>
     <div class="cr">${h.ticket ? `配合券（1回きり）・ ${h.coatName}` : `戦績 ${h.rec.join('-')} ・ ${achTxt(h)}`}</div>
     ${statValLine(h.st)}${h.sire ? `<div class="cr ped">父 ${h.sire} × 母 ${h.dam}</div>` : ''}
@@ -2473,7 +2548,15 @@ function saleCard(h, k) {
     <div class="buy"><b>${yen(h.price)}</b><button class="main" data-buysale="${k}" ${full || money < h.price ? 'disabled' : ''}>${full ? '厩舎が満員' : '落札する'}</button></div>
   </div>`;
 }
+// 第1層／第2層の切り替え(第2層の馬が1頭でもいれば出る)
+const worldTag = h => hw(h) === 2 ? '<span class="wtag">幻境</span>' : '';
+function worldTabs() {
+  if (!hasW2()) return '';
+  const n = w => game.horses.filter(h => hw(h) === w).length;
+  return `<div class="wtabs">${[1, 2].map(w => `<button data-world="${w}" class="w${w} ${viewW() === w ? 'on' : ''}"><b>${WORLDS[w].n}</b>${WORLDS[w].sub ? `<span>${WORLDS[w].sub}</span>` : ''}<small>${n(w)}頭</small></button>`).join('')}</div>`;
+}
 function renderStable() {
+  stableEl.classList.toggle('w2', viewW() === 2);
   let body = '';
   const sel = game.horses.find(h => h.id === selId);
   const detail = stableTab === 'stable' && stableView === 'detail' && sel;
@@ -2482,7 +2565,10 @@ function renderStable() {
   else if (stableTab === 'stable') {
     body = (game.log.length ? `<div class="log">${game.log.map(l => `<div>${l}</div>`).join('')}</div>` : '') +
       scheduleHTML(false) +
-      (game.horses.length ? `<div class="hint">馬をタップすると放牧地で様子を見ながら育成できます</div>` + game.horses.map(horseRow).join('') : '<div class="empty">まだ馬がいません。「セリ」か「ガチャ」で馬を手に入れよう</div>') +
+      worldTabs() +
+      (() => { const list = game.horses.filter(h => hw(h) === viewW());
+        return list.length ? `<div class="hint">馬をタップすると放牧地で様子を見ながら育成できます</div>` + list.map(horseRow).join('')
+          : viewW() === 2 ? '<div class="empty">第2層にいる現役馬はいません。レジェンドカップを3勝した馬の子が第2層で生まれます</div>' : '<div class="empty">まだ馬がいません。「セリ」か「ガチャ」で馬を手に入れよう</div>'; })() +
       `<button class="resetbtn" data-askreset>🗑 データを消して最初から始める</button>`;
   } else if (stableTab === 'sale') {
     body = `<div class="hint">毎週4頭が上場されます（厩舎は最大${MAX_HORSES}頭）</div>` + game.sale.map(saleCard).join('');
@@ -2625,8 +2711,9 @@ stableEl.addEventListener('click', ev => {
 
   else if (d.tstat && h) { h.act.stat = d.tstat; trainDetail = true; }
   else if (d.tlist !== undefined) trainDetail = false;
-  else if (d.tgrade && h) h.act.grade = +d.tgrade;
+  else if (d.tgrade && h) { if (hw(h) === 2 || !GRADES[+d.tgrade].adv) h.act.grade = +d.tgrade; }
   else if (d.tadv !== undefined) trainAdv = d.tadv === '1';
+  else if (d.world) { game.view = +d.world; schedSel = 0; saveAll(); }
   else if (d.retire) {
     const x = game.horses.find(y => y.id === +d.retire);
     pendingAsk = { tag: '🌾 引退', title: `${x.name} を引退させる`, q: `戦績 ${x.rec.join('-')} ・ 獲得 ${yen(x.prize)}<br><b>引退すると元に戻せません。</b>本当に引退させますか？`, ok: '引退させる',
@@ -2681,7 +2768,9 @@ function applyResult(h, pos, c, name) {
   if (pos === 1) {
     h.wins = h.wins || {}; h.wins[c] = (h.wins[c] || 0) + 1;
     if (c === 5 || c === 6) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🏆G1制覇！（今年${h.yearG1}勝）`; game.g1Total = (game.g1Total || 0) + 1; }
-    if (c === 7) { msg += ' 👑レジェンド制覇！'; game.lgTotal = (game.lgTotal || 0) + 1; }
+    if (c === 7) { msg += ' 👑レジェンド制覇！'; game.lgTotal = (game.lgTotal || 0) + 1; if ((h.wins[7] || 0) >= 3) msg += ' ✨この馬の子は第2層「幻境」へ行けます'; }
+    if (c === 13 || c === 14) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🔮幻境G1制覇！（今年${h.yearG1}勝）`; }
+    if (c === 15) msg += ' 🌌幻境レジェンド制覇！';
     if (BGACHAS[c]) { game.btix[c] = (game.btix[c] || 0) + 1; msg += ` 🎟${BGACHAS[c].n}ガチャ券ゲット`; }
   }
   game.log.push(msg);
@@ -2709,6 +2798,7 @@ function restNow(h) {
   runTrainingQueue([{ h, t: REST_T, grade: 0, rest: true, ok: true, hpB: before, hpA: h.hp, condB: h.cond, cost: 0 }], () => showStable());
 }
 function trainNow(h) {
+  if (hw(h) !== 2 && GRADES[h.act.grade].adv) h.act.grade = 4;   // 上級調教は第2層だけ
   const a = h.act, g = GRADES[a.grade];
   if (!h || locked(h) || h.injured || money < g.cost) return;
   money -= g.cost; h.trained = true;
@@ -2741,14 +2831,15 @@ function trainNow(h) {
 function advanceWeek() {
   money += SALARY;
   game.log = [`給料 +${yen(SALARY)}`];
-  const wr = heldRace(null), entries = [];
-  if (wr.over) game.log.push(`今週の${wr.over.n}は${wr.n}に変更されました`);
+  const view = viewW(), wr = raceOf(view), entries = [], other = [];
   for (const h of game.horses) {
     if (h.injured) { h.lastAct = 'injured'; continue; }
-    const t = h.act.type;
-    if (t === 'race' && raceTarget(h) === wr.c && (wr.c <= 1 || eligible(h, wr.c)[0])) { entries.push(h); h.lastAct = 'race'; }
+    const t = h.act.type, r = raceOf(hw(h));
+    if (t === 'race' && eligible(h, r.c)[0]) { (hw(h) === view ? entries : other).push(h); h.lastAct = 'race'; }
     else h.lastAct = h.rested ? 'rest' : h.trained ? 'train' : 'none';
   }
+  // 表示していない階層のレースは裏で結果だけ出す
+  if (other.length) { const wo = raceOf(view === 2 ? 1 : 2); for (const [h, pos] of instantRace(CLASSES[wo.c], other, wo.s)) applyResult(h, pos, wo.c, wo.n); }
   saveAll();
   advanceRaces(entries, wr);
 }
@@ -3137,7 +3228,7 @@ function scr(r) {
   return _pv.z > -1 && _pv.z < 1 ? { x: _pv.x, y: _pv.y } : null;
 }
 const onScr = (r, m = 0.95) => { const p = scr(r); return !!p && Math.abs(p.x) <= m && Math.abs(p.y) <= 1.05; };
-const bigRank = () => race && race.cls ? CLASSES.indexOf(race.cls) - 4 : 0;   // 1=国内G1 2=海外G1 3=レジェンド
+const bigRank = () => race && race.cls ? baseC(CLASSES.indexOf(race.cls)) - 4 : 0;   // 1=国内G1 2=海外G1 3=レジェンド
 function confetti(n) {
   const box = document.createElement('div'); box.className = 'confetti';
   const cols = ['#ffd84d', '#ff5d73', '#4dd2ff', '#7dff8a', '#ffffff', '#c58bff'];
