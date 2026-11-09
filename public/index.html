@@ -3073,12 +3073,19 @@ function resetCommentary() {
   if (comEl) { comEl.innerHTML = ''; comEl.style.display = 'none'; }
 }
 const nm = r => r.o.name, isMine = r => false;   // 自分の馬は特別扱いしない
-function say(text, prio = 1, mine = false, cls = '') {
+function say(text, prio = 1, mine = false, cls = '', exp = 0) {
   if (!com || com.ended) return;                          // ゴール後は実況しない
   if (prio >= 3) com.queue = com.queue.filter(q => q.prio >= 3);       // 大事な場面は割り込み
   else if (com.queue.length > 2) com.queue = com.queue.filter(q => q.prio >= prio);
-  com.queue.push({ text, prio, mine, cls });
+  com.queue.push({ text, prio, mine, cls, t: raceT, exp });
 }
+// 画面に映っているか(レース用カメラに投影して判定)。x は画面の左右端が±1
+const _pv = new THREE.Vector3();
+function scr(r) {
+  camera.updateMatrixWorld(); _pv.copy(r.h.root.position); _pv.y += 1.2; _pv.project(camera);
+  return _pv.z > -1 && _pv.z < 1 ? { x: _pv.x, y: _pv.y } : null;
+}
+const onScr = (r, m = 0.95) => { const p = scr(r); return !!p && Math.abs(p.x) <= m && Math.abs(p.y) <= 1.05; };
 const bigRank = () => race && race.cls ? CLASSES.indexOf(race.cls) - 4 : 0;   // 1=国内G1 2=海外G1 3=レジェンド
 function confetti(n) {
   const box = document.createElement('div'); box.className = 'confetti';
@@ -3100,6 +3107,7 @@ function updateCommentary(dt, order) {
   if (state === 'count') once('pre', preRaceCommentary);
   if (state === 'race' || state === 'done') genCommentary(order);
   com.shownT += dt;
+  while (com.queue[0] && com.queue[0].exp && raceT - com.queue[0].t > com.queue[0].exp) com.queue.shift();   // 間に合わなかった直線の実況は捨てる
   const q = com.queue[0];
   if (q && (com.shownT > 2.1 || (q.prio >= 3 && com.shownT > 0.9))) {
     com.queue.shift(); com.shownT = 0;
@@ -3133,6 +3141,9 @@ const CT = {
   away: ['{a}、リードは{g}馬身！', '{a}が抜け出している！リード{g}馬身！', '{a}、これは強い！'],
   win: ['{a}、1着でゴールイン！', '{a}が先頭でゴール！', '勝ったのは{a}！', '{a}、見事に差し切りました！'],
   winNige: ['{a}、逃げ切った！', '{a}がそのまま押し切ってゴール！'],
+  winOoni: ['{a}、大逃げ炸裂！そのまま逃げ切った！', '{a}、最後まで影を踏ませず！大逃げで逃げ切り！', 'なんということだ！{a}、大逃げで押し切った！'],
+  winSashi: ['{a}、鮮やかに差し切った！', '{a}、外から豪快に差し切りました！', '{a}、最後に捕らえた！', '{a}、ゴール寸前で差し切った！'],
+  winOikomi: ['{a}、最後方から全部まとめて差し切った！', '{a}、豪脚炸裂！大外一気に差し切り！', 'なんという脚だ！{a}が直線一気で差し切った！'],
   photo: ['ゴール！際どい！写真判定か…{a}がわずかに先着！', '並んでゴール！ほんのわずか{a}が先着か！'],
   fav: ['1番人気に応えました！', '人気どおりの強さを見せました！'],
   upset: ['大波乱！{p}番人気の{a}が勝利！', '波乱の決着！{p}番人気{a}！', 'まさかの{p}番人気！{a}がやりました！'],
@@ -3149,6 +3160,30 @@ const CT = {
   wet: ['雨の中のレース、各馬泥をかぶりながらの競馬です', '重い馬場、スタミナが問われます'],
   dirt: ['砂煙を上げて各馬進みます', 'ダートのレース、パワー勝負です'], turf: ['きれいな芝の上を各馬軽快に進みます'],
   r800: ['残り800を通過', 'レースは後半へ', '残り800、ここから動きが出るか'], r600: ['残り600！', '残り600、各馬そろそろ仕掛けどころ', '3コーナーから4コーナーへ'],
+  // ---- 最後の直線(画面に映っている馬・馬券内に来る馬だけを呼ぶ) ----
+  stIn: ['さあ最後の直線！先頭は{a}！', '直線に向いた！先頭は{a}！', '最後の直線！{a}が先頭で粘る！', '直線コースに入りました！{a}が先頭！', 'さあ直線勝負！先頭{a}！'],
+  stInPair: ['最後の直線！先頭は{a}、すぐ外に{b}！', '直線に入った！{a}先頭、{b}が並びかける！', '直線へ！{a}と{b}が並んで向いてきた！'],
+  solo: ['{a}、独走状態！', '{a}の一人旅！後ろはまだ来ない！', '{a}、悠々と先頭！後続は画面の外だ！', 'リードは{g}馬身！{a}、これはセーフティリードか！', '{a}、大きなリードを保ったまま坂を上る！', 'まだ後ろは来ない！{a}の独り舞台！', '{a}、影をも踏ませぬ大逃げ！'],
+  soloIn: ['最後の直線！{a}が大きなリードを取って一人旅！', '直線に入って{a}、まだ{g}馬身のリード！独走だ！', '{a}が大逃げのまま直線へ！後続ははるか後方！'],
+  soloChase: ['後続は{b}、ここから差を詰められるか！', '{b}が懸命に追いかける！届くのか！', '後ろの集団から{b}、必死に前を追う！', '{b}がじわじわ差を詰めてきている！', '{b}が動いた！大逃げを捕らえにいく！'],
+  soloFade: ['{a}、リードはまだある！しかし脚色はどうか！', '{a}、苦しくなってきたか！リードがみるみる詰まる！', '{a}、粘れるか！後ろが迫っているぞ！', '{a}の脚が鈍ってきた！逃げ切れるか！'],
+  soloEndW: ['しかし後ろから{b}が来た！{a}、粘れるか！', '{b}が迫ってきた！{a}、逃げ切れるか！', 'ようやく{b}が来た！それでも{a}のリードはまだある！'],
+  soloEndL: ['後ろから{b}が来た！{a}の脚色が鈍った！', '{b}が迫る！{a}、ここで苦しくなった！', '来た来た{b}！{a}との差がみるみる縮まる！'],
+  fade: ['{a}、もういっぱいか！', '{a}、ここで脚が止まった！', '{a}は苦しくなった！', '{a}、一杯になって後退！', '先頭の{a}、ずるずると下がっていく！', '{a}、さすがに脚が上がったか！'],
+  hold: ['{a}、かわされてもまだ粘っている！', '{a}、しぶとく食い下がる！', '{a}も諦めない！'],
+  surge: ['後ろから一気に{a}！', '大外から{a}が飛んできた！', '{a}だ！{a}が突っ込んでくる！', '外から{a}！すごい脚だ！', '馬群を割って{a}！', '{a}、ものすごい末脚！', '{a}が猛然と追い込んでくる！', '{a}だ！外から一気に来た！'],
+  surgeSuper: ['{a}！とんでもない脚で飛んでくる！', '信じられない脚！{a}が一気に来た！', 'なんだこの脚は！{a}が飛んでくる！'],
+  surgeOther: ['後ろから{a}も来ている！', '{a}も差を詰めてきた！', '内から{a}も伸びてくる！'],
+  nobi: ['{a}が外から伸びてくる！', '{a}、じりじりと差を詰める！', '{a}、いい脚で上がってくる！', '{a}がぐんぐん伸びる！', '外を回って{a}！', '{a}、ここから伸びるか！'],
+  leadF: ['{a}、先頭で粘る！', '{a}、まだ先頭！', '{a}、懸命に逃げ込みを図る！', '{a}が押し切りを図る！', '先頭は{a}！', '{a}、まだ譲らない！'],
+  chaseF: ['{a}が並びかける！', '{a}、懸命に追う！', '{a}、2番手から差を詰める！', '{a}も食い下がる！', '{a}、前を捕らえにかかる！'],
+  battle: ['{a}と{b}の叩き合い！', '{a}か！{b}か！', '内{a}、外{b}！並んだ並んだ！', '{a}、{b}、譲らない！', '{a}が出るか！{b}が粘るか！', '馬体を併せて{a}と{b}！', '{a}と{b}、壮絶な追い比べ！', '一騎打ちだ！{a}と{b}！'],
+  battle3: ['3頭横一線！{a}、{b}、{c}！', '{a}、{b}、{c}！3頭の争いだ！', '横一線！{a}か！{b}か！{c}か！'],
+  r200W: ['残り200！{a}先頭、外から{w}が迫る！', 'あと200！{a}が粘る、{w}が襲いかかる！', '残り200を切った！{a}か、{w}か！'],
+  r200S: ['残り200！{a}、まだ先頭！逃げ切れるか！', '残り200！{a}のリードは{g}馬身！', 'あと200！{a}、このまま押し切るか！'],
+  r100C: ['{a}か！{b}か！ゴールはどっちだ！', '並んでゴール前！{a}か{b}か！', 'ゴール前、{a}と{b}！わずかにどっちだ！'],
+  r100K: ['{w}が迫る！{a}、粘れるか！', '{a}粘る！しかし{w}が来た！', '{w}が襲いかかる！{a}、苦しい！'],
+  r100A: ['{a}、突き抜けた！', '{a}、これは決まったか！', '{a}、リード{g}馬身！', '{a}、完全に抜け出した！', '{a}、強い強い！'],
   stFill: ['{a}粘る！', '{b}が並びかける！', '後ろからは{c}も来ている！', '{a}、先頭で逃げ込みを図る！', '{b}、懸命に追う！', '内から{c}も伸びてくる！', '{a}、まだ先頭！'],
 };
 // スタート前：レース紹介 → 人気 → 体勢完了
@@ -3207,6 +3242,107 @@ function preRaceCommentary() {
   say(fill(pk(['1番人気は{a}、2番人気に{b}', '注目の1番人気は{a}！続いて{b}', '人気を集めるのは{a}、対抗に{b}']), { a: nm(favs[0]), b: nm(favs[1]) }), 2);
   say(pk(['各馬ゲートに収まりました…体勢整いました！', '最後の1頭がゲートに入って…体勢完了！', '16頭ゲートイン完了、体勢整いました！']), 2);
 }
+// ===== 最後の直線 =====
+// 呼ぶのは「画面に映っている1〜3番手」と「最終的に3着以内に来る馬」だけ。
+// 大逃げの独走 → 後続が画面に入ってくる / 先頭だった馬が失速 / 後ろから一気 / 1着争い の各フェーズ
+const LATE = /差し|追込|直線一気|まくり/;
+function straightCommentary(order, rem, g) {
+  const L = order[0], S = order[1], T = order[2], n = order.length;
+  const fin = r => planOrder.indexOf(r.i);                // 最終着順(0=1着)。着順はスタート時点で決まっている
+  const st = com.st || (com.st = { lead: L.i, out: new Set(), solo: false, surged: new Set(), battleT: -99, soloT: raceT, fillT: raceT, faded: false, held: false });
+  // 同じ言い回しが続かないよう、直近に使った文は避けて選ぶ
+  const sayS = (arr, o, prio = 2, exp = 2.6) => {
+    const rec = st.rec || (st.rec = []), c = arr.filter(t => !rec.includes(t)), t = pk(c.length ? c : arr);
+    rec.push(t); if (rec.length > 6) rec.shift();
+    say(fill(t, o), prio, false, '', exp);
+  };
+  const gapB = (a, b) => (a.trav - b.trav) / BASHIN;
+  // 画面の外にいた馬を記録(後ろから一気の判定用)
+  for (const r of order) if (!onScr(r)) st.out.add(r.i);
+
+  // --- 直線入口 ---
+  once('st', () => {
+    com.lastLeader = L.i; com.leadChgT = raceT;
+    if (/大逃げ/.test(L.o.style) && gapB(L, S) >= 5) { st.solo = true; sayS(CT.soloIn, { a: nm(L), g: Math.round(gapB(L, S)) }, 3, 0); }
+    else if (gapB(L, S) < 0.8 && onScr(S)) sayS(CT.stInPair, { a: nm(L), b: nm(S) }, 3, 0);
+    else sayS(CT.stIn, { a: nm(L) }, 3, 0);
+  });
+  const leader0 = runners[st.lead];
+  function battleOnly() {
+    const tight = rem < 260 && gapB(L, S) < 0.8 && onScr(S);
+    if (tight && raceT - st.battleT > 2.8) {
+      st.battleT = raceT;
+      if (gapB(L, T) < 0.8 && onScr(T)) sayS(CT.battle3, { a: nm(L), b: nm(S), c: nm(T) }, 3, 2);
+      else sayS(CT.battle, { a: nm(L), b: nm(S) }, 3, 2);
+    }
+    return tight;
+  }
+
+  // --- 大逃げの独走：後続が画面に入るまでは一人旅 ---
+  if (st.solo) {
+    const comer = order.slice(1).find(r => onScr(r, 0.9));
+    if (comer && rem < 380) {
+      st.solo = false;
+      const b = order.slice(1).find(r => onScr(r, 0.9) && fin(r) < 3) || comer;
+      sayS(fin(L) === 0 ? CT.soloEndW : CT.soloEndL, { a: nm(L), b: nm(b) }, 3);
+    } else if (raceT - st.soloT > 2.6 && !com.queue.length) {
+      st.soloT = raceT;
+      const chaser = order.slice(1).find(r => fin(r) < 3);     // 届きそうな馬にも触れる
+      if (chaser && Math.random() < 0.4 && !com.said.has('sc' + chaser.i)) { com.said.add('sc' + chaser.i); sayS(CT.soloChase, { b: nm(chaser) }); }
+      else sayS(fin(L) !== 0 && rem < 230 ? CT.soloFade : CT.solo, { a: nm(L), g: Math.round(gapB(L, S)) });   // 捕まる大逃げは後半トーンを落とす
+    }
+  }
+
+  // --- 直線入口で先頭だった馬が失速(3着以内に残れない) ---
+  if (rem < 25) { battleOnly(); return; }                  // ゴール寸前は叩き合いだけ
+  if (!st.faded && L.i !== st.lead && fin(leader0) >= 3 && gapB(L, leader0) > 0.6 && onScr(leader0)) {
+    st.faded = true; sayS(CT.fade, { a: nm(leader0) }, 3);
+  } else if (!st.held && L.i !== st.lead && fin(leader0) < 3 && fin(leader0) > 0 && gapB(L, leader0) > 0.3 && onScr(leader0) && rem < 250 && rem > 50) {
+    st.held = true; sayS(CT.hold, { a: nm(leader0) }, 2);
+  }
+
+  // --- 後ろから一気：画面の外にいた馬が、画面に入るかどうかの所まで来た(3着以内に来る馬だけ) ---
+  if (rem < 340) for (const r of order) {
+    const k = order.indexOf(r);
+    if (k < 2 || fin(r) >= 3 || st.surged.has(r.i) || !st.out.has(r.i) || rem < (/直線一気/.test(r.o.style) ? 25 : 70)) continue;   // 直線一気はゴール直前に飛んでくることも
+    const p = scr(r); if (!p || Math.abs(p.x) > (/直線一気/.test(r.o.style) ? 1.6 : 1.3)) continue;   // 直線一気は少し早めに呼ぶ
+    st.surged.add(r.i); if (st.solo && fin(L) !== 0) st.solo = false;   // 一気の馬が来たら独走の実況はおしまい
+    sayS(SUPER.has(r.o.style) && /直線一気|まくり/.test(r.o.style) ? CT.surgeSuper : LATE.test(r.o.style) ? CT.surge : CT.surgeOther, { a: nm(r) }, 4, 1.8);   // 一気の瞬間は最優先
+    break;
+  }
+
+  // --- 先頭が入れ替わった ---
+  if (L.i !== com.lastLeader && raceT - com.leadChgT > 2.5 && onScr(L)) { com.lastLeader = L.i; com.leadChgT = raceT; say1(CT.lead, { a: nm(L) }, 3); }
+
+  // --- 残り200 ---
+  if (rem < 230) once('r200', () => {
+    const W = runners[planOrder[0]];
+    if (W !== L && onScr(W) && gapB(L, W) < 4) sayS(CT.r200W, { a: nm(L), w: nm(W) }, 3);
+    else if (gapB(L, S) >= 3) sayS(CT.r200S, { a: nm(L), g: Math.round(gapB(L, S)) }, 3);
+    else { const b = order.slice(1).filter(r => onScr(r)).sort((x, y) => fin(x) - fin(y))[0] || S; sayS(CT.r200, { a: nm(L), b: nm(b) }, 3); }
+  });
+
+  // --- 1着争い(並んでいる間は何度でも) ---
+  const tight = battleOnly();
+
+  // --- 残り100 ---
+  if (rem < 90) once('r100', () => {
+    const W = runners[planOrder[0]];
+    if (tight) sayS(CT.r100C, { a: nm(L), b: nm(S) }, 3, 1.5);
+    else if (W !== L && onScr(W, 1.2)) sayS(CT.r100K, { a: nm(L), w: nm(W) }, 3, 1.5);      // 先頭はこのあと捕まる
+    else if (W === L && gapB(L, S) >= 1.5) sayS(CT.r100A, { a: nm(L), g: Math.round(gapB(L, S)) }, 3, 1.5);
+  });
+
+  // --- つなぎ：映っている1〜3番手 / 3着以内に来る差し・追込(直線一気は「一気」の時だけ) ---
+  if (!st.solo && !com.queue.length && com.shownT > 2.0 && raceT - st.fillT > 1.5 && rem > 60) {
+    st.fillT = raceT;
+    const opts = [];
+    if (onScr(L)) opts.push(() => sayS(CT.leadF, { a: nm(L) }));
+    for (const r of [S, T]) if (r && onScr(r) && gapB(L, r) < 4) opts.push(() => sayS(CT.chaseF, { a: nm(r) }));
+    for (const r of order.slice(3)) if (fin(r) < 3 && LATE.test(r.o.style) && !/直線一気/.test(r.o.style) && onScr(r)) opts.push(() => sayS(CT.nobi, { a: nm(r) }), () => sayS(CT.nobi, { a: nm(r) }));
+    if (opts.length) pk(opts)();
+  }
+}
 function genCommentary(order) {
   const L = order[0], S = order[1], T = order[2], lead = L.trav, rem = D - lead, n = order.length;
   const g = Math.max(1, Math.round((lead - S.trav) / BASHIN));
@@ -3230,16 +3366,9 @@ function genCommentary(order) {
       if (/まくり/.test(r.o.style) && com.rank450[r.i] - k >= 4) once('mk' + r.i, () => say1(r.o.style === '超まくり' ? CT.smakuri : CT.makuri, { a: nm(r) }, 2));
     });
     if (rem < 470) once('4c', () => say1(CT.c4, {}, 2));
-    if (rem < 400) once('st', () => { say1(CT.st, { a: nm(L) }, 3); com.lastLeader = L.i; com.leadChgT = raceT; });
-    if (rem < 400 && L.i !== com.lastLeader && raceT - com.leadChgT > 2.5) { com.lastLeader = L.i; com.leadChgT = raceT; say1(CT.lead, { a: nm(L) }, 3); }
-    if (rem < 230) once('r200', () => {
-      say1(CT.r200, { a: nm(L), b: nm(S) }, 3);
-      const fly = order.slice(0, 4).find(r => /直線一気/.test(r.o.style));
-      if (fly) say1(CT.fly, { a: nm(fly) }, 3);
-    });
-    if (rem < 90) once('r100', () => Math.abs(L.trav - S.trav) < BASHIN ? say1(CT.close, { a: nm(L), b: nm(S) }, 3) : say1(CT.away, { a: nm(L), g }, 3));
+    if (rem < 400) straightCommentary(order, rem, g);
     // 何も言うことがないときは、展開を拾ってしゃべる
-    if (!com.queue.length && com.shownT > 2.0 && rem > 60 && com.said.has('hana') && lead > 220) {
+    if (!com.queue.length && com.shownT > 2.0 && rem >= 400 && com.said.has('hana') && lead > 220) {
       const opts = [];
       if (rem >= 400) {
         opts.push(['leadNow', () => say1(CT.leadNow, { a: nm(L), g })], ['pair', () => say1(CT.pair, { a: nm(S), b: nm(T) })]);
@@ -3249,8 +3378,6 @@ function genCommentary(order) {
         const fav = order.find(r => pop[r.i] === 1); if (fav) opts.push(['fav', () => say1(CT.favPos, { a: nm(fav), r: order.indexOf(fav) + 1 })]);
         opts.push(['pace', () => say1((lead - S.trav) / BASHIN > 6 || /大逃げ/.test(L.o.style) ? CT.pace : CT.slow)]);
         opts.push(['ground', () => say1(race.weather === '雨' ? CT.wet : race.surface === 'ダート' ? CT.dirt : CT.turf)]);
-      } else {
-        opts.push(['stFill', () => say1(CT.stFill, { a: nm(L), b: nm(S), c: nm(order[2 + Math.floor(Math.random() * 3)]) }, 2)]);
       }
       const h0 = com.hist && com.hist[0];
       if (h0) {
@@ -3271,7 +3398,9 @@ function genCommentary(order) {
     const w = finish[0], p = pop[w.i];
     const close = finish[1] && finish[1].ft - w.ft < 0.08;
     com.queue = [];                                     // 残りの実況は捨てて、勝ち馬だけ流して終わり
-    let t = close ? fill(pk(CT.photo), { a: nm(w) }) : fill(pk(/逃げ/.test(w.o.style) ? CT.winNige.concat(CT.win.slice(0, 3)) : CT.win), { a: nm(w) });
+    const wl = /大逃げ/.test(w.o.style) ? CT.winOoni : /逃げ/.test(w.o.style) ? CT.winNige.concat(CT.win.slice(0, 3))
+      : /直線一気|追込/.test(w.o.style) ? CT.winOikomi.concat(CT.winSashi) : /差し|まくり/.test(w.o.style) ? CT.winSashi.concat(CT.win.slice(0, 3)) : CT.win;
+    let t = close ? fill(pk(CT.photo), { a: nm(w) }) : fill(pk(wl), { a: nm(w) });
     if (p === 1) t += ' ' + pk(CT.fav); else if (p >= 8) t += ' ' + fill(pk(['大波乱です！', '{p}番人気の大金星！']), { p });
     say(t, 5); com.shownT = 99; com.ended = true;
     const big = bigRank(), a = nm(w);
