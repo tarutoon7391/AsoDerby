@@ -283,6 +283,9 @@ button.main{background:#2ecc71;color:#fff}
 #stable .ttl{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 #stable .tl{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 #stable .tl b{font-size:17px;text-shadow:0 1px 0 rgba(0,0,0,.25)}
+#stable .tl b{white-space:nowrap}
+#stable .tl .money{white-space:nowrap}
+#stable .tl .money.long{font-size:12.5px;letter-spacing:-.3px}
 #stable .money{margin-left:0;color:#ffe08a;font-weight:800;font-size:14px}
 #stable .tl small{width:100%;font-size:10px;opacity:.85;color:#d9f2c4}
 #stable .wkbtn{margin-left:auto;flex:none;display:flex;flex-direction:column;align-items:center;padding:8px 14px;font-size:14px;font-weight:900;background:linear-gradient(#ffd96a,#f2b632);color:#5a3a12;border:2px solid #c98d1a;border-radius:12px;box-shadow:0 3px 0 #a87014}
@@ -1609,7 +1612,12 @@ const TYPES = [
 const TYPE = Object.fromEntries(TYPES.map(t => [t.key, t]));
 let money = 10000, raceNo = 0, slip = [], betType = 'tan', sel = [], amt = 100, settled = false;
 const saveMoney = () => saveAll();
-const yen = n => n.toLocaleString() + '円';
+// 1億円以上は「12億3,456万円」「3兆5億円」のように漢字で短く(上の所持金が2行にならないように)
+const yen = n => {
+  if (Math.abs(n) < 1e8) return n.toLocaleString() + '円';
+  const sg = n < 0 ? '-' : '', v = Math.floor(Math.abs(n)), cho = Math.floor(v / 1e12), oku = Math.floor(v % 1e12 / 1e8), man = Math.floor(v % 1e8 / 1e4);
+  return sg + (cho ? cho.toLocaleString() + '兆' : '') + (oku ? oku.toLocaleString() + '億' : '') + (man ? man.toLocaleString() + '万' : '') + '円';
+};
 const comboKey = (type, h) => type + ':' + h.join('-');
 const comboTxt = (type, h) => h.map(i => i + 1).join(TYPE[type].ord ? '→' : '-');
 const normSel = (type, h) => TYPE[type].ord ? [...h] : [...h].sort((a, b) => a - b);
@@ -2739,7 +2747,7 @@ function renderStable() {
   stableEl.innerHTML = `
   <div class="shd">
     <div class="ttl">
-      <div class="tl"><b>${game.year}年目 第${game.week}週</b><span class="money">💰 ${yen(money)}</span><small>今週の給料 +${yen(salary())}</small></div>
+      <div class="tl"><b>${game.year}年目 第${game.week}週</b><span class="money ${yen(money).length > 9 ? 'long' : ''}">💰 ${yen(money)}</span><small>今週の給料 +${yen(salary())}</small></div>
       <button id="nextWeek" class="wkbtn">週を進める<small>▶▶</small></button>
     </div>
     <label class="skipsw ${skipRace ? 'on' : ''}"><input type="checkbox" id="skipChk" ${skipRace ? 'checked' : ''}><i></i>
