@@ -2021,10 +2021,7 @@ function setRunnerHorse(i, o) {
 const COND_CARE_RATE = [100, 100, 100, 100, 100]; // 調子ケアも必ず成功
 const GREAT_P = [0.12, 0.16, 0.22, 0.3, 0.4, 0.43, 0.46, 0.49, 0.52]; // 大成功になる確率(並〜神域)
 // トレーニングは必ず成功。1回の伸びは施設で決まり、能力が高いほど伸びにくい(疲れていると伸びが鈍る)
-const trainRate = () => 100;
-// 料金 = 施設の料金 × 鍛える能力の数(2つなら2倍、4つなら4倍)
-const trainMul = stat => (TRAIN_OF[stat] && TRAIN_OF[stat].ks ? TRAIN_OF[stat].ks.length : 1);
-const trainCost = (stat, grade) => GRADES[grade].cost * trainMul(stat);                    // 失敗はなし。施設が良いほど1回の伸びが大きい
+const trainRate = () => 100;                    // 失敗はなし。施設が良いほど1回の伸びが大きい
 // 1年52週のローテーション(JRAの年間カレンダーに沿った史実のレース名・開催場・芝ダート)
 // クラスindex: 0新馬 1未勝利 2OP 3G3 4G2 5国内G1 6海外G1 7レジェンド  ※レジェンドカップだけはこのゲームのオリジナル
 const SCHEDULE = [
@@ -2184,11 +2181,11 @@ function horseCard(h) {
       <div class="tdesc">${TRAIN_DESC[t.k]}</div>
       ${(() => {
         const adv = hw(h) === 2 && (trainAdv == null ? !!GRADES[a.grade].adv : trainAdv);
-        const btn = (x, gi) => `<button data-tgrade="${gi}" data-id="${h.id}" class="g${gi} ${a.grade === gi ? 'on' : ''}">${gi === 3 ? '<em>✦</em>' : gi === 4 ? '<em>👑</em>' : gi >= 5 ? `<em>${['💎', '🏰', '🌟', '⛩️'][gi - 5]}</em>` : ''}<span>${x.fac}</span><small>${(c => c >= 5e5 ? c / 1e4 + '万円' : yen(c))(x.cost * trainMul(a.stat))}</small></button>`;
+        const btn = (x, gi) => `<button data-tgrade="${gi}" data-id="${h.id}" class="g${gi} ${a.grade === gi ? 'on' : ''}">${gi === 3 ? '<em>✦</em>' : gi === 4 ? '<em>👑</em>' : gi >= 5 ? `<em>${['💎', '🏰', '🌟', '⛩️'][gi - 5]}</em>` : ''}<span>${x.fac}</span><small>${x.cost >= 5e5 ? x.cost / 1e4 + '万円' : yen(x.cost)}</small></button>`;
         const list = GRADES.map((x, gi) => [x, gi]).filter(([x]) => !!x.adv === adv);
         const canAdv = hw(h) === 2;                                   // 上級調教は第2層(幻境)の馬だけ
         return `<div class="tgwrap ${adv ? 'adv' : ''}">${adv ? '<button class="tgpage" data-tadv="0"><b>‹</b><small>基本<br>調教へ</small></button>' : ''}<div class="tgrade round">${list.map(([x, gi]) => btn(x, gi)).join('')}</div>${adv || !canAdv ? '' : '<button class="tgpage" data-tadv="1"><small>上級<br>調教へ</small><b>›</b></button>'}</div>`; })()}
-            <button class="main go" data-asktrain="${h.id}" ${money < trainCost(a.stat, a.grade) ? 'disabled' : ''}>${TRAIN_OF[a.stat].n}（${g.fac}）を実行 ・ ${yen(trainCost(a.stat, a.grade))}${trainMul(a.stat) > 1 ? `<small>（${trainMul(a.stat)}能力ぶん）</small>` : ''}</button>`;
+            <button class="main go" data-asktrain="${h.id}" ${money < g.cost ? 'disabled' : ''}>${TRAIN_OF[a.stat].n}（${g.fac}）を実行 ・ ${yen(g.cost)}</button>`;
     }
   } else if (detailTab === 'rest') {
     if (inj || locked(h)) body = lockMsg;
@@ -2669,7 +2666,7 @@ stableEl.addEventListener('click', ev => {
   if (el.id === 'skipChk') { skipRace = el.checked; renderStable(); return; }
   if (d.dtab) { detailTab = d.dtab; trainDetail = false; renderStable(); return; }
   if (d.asktrain) { const x = game.horses.find(y => y.id === +d.asktrain), g = GRADES[x.act.grade];
-    pendingAsk = { tag: '🏋️ トレーニング', title: `${TRAIN_OF[x.act.stat].n}（${g.fac}）`, q: `${x.name} に実行しますか？<br>費用 ${yen(trainCost(x.act.stat, x.act.grade))}${trainMul(x.act.stat) > 1 ? `（${yen(g.cost)} × ${trainMul(x.act.stat)}能力）` : ''}`, ok: '実行する', run: () => trainNow(x) };
+    pendingAsk = { tag: '🏋️ トレーニング', title: `${TRAIN_OF[x.act.stat].n}（${g.fac}）`, q: `${x.name} に実行しますか？<br>費用 ${yen(g.cost)}`, ok: '実行する', run: () => trainNow(x) };
     renderStable(); return; }
   if (d.askrest) { const x = game.horses.find(y => y.id === +d.askrest);
     pendingAsk = { tag: '😴 休養', title: `${x.name} を休ませる`, q: `体力 ${Math.round(x.hp)} → ${Math.min(100, Math.round(x.hp + 35))}<br>今週はトレーニング・出走ができなくなります`, ok: '休養させる', run: () => restNow(x) };
@@ -2817,9 +2814,8 @@ function restNow(h) {
 function trainNow(h) {
   if (hw(h) !== 2 && GRADES[h.act.grade].adv) h.act.grade = 4;   // 上級調教は第2層だけ
   const a = h.act, g = GRADES[a.grade];
-  const cost = trainCost(a.stat, a.grade);
-  if (!h || locked(h) || h.injured || money < cost) return;
-  money -= cost; h.trained = true;
+  if (!h || locked(h) || h.injured || money < g.cost) return;
+  money -= g.cost; h.trained = true;
   let item; const hpB = h.hp, condB = h.cond;
   // 必ず成功し、一部が大成功。上限に達していても成功・大成功の表示は普段どおり(上限は知らせない)
   const rate = trainRate(h, a.stat, a.grade), ok = Math.random() * 100 < rate, great = ok && Math.random() < GREAT_P[a.grade];
@@ -2842,7 +2838,7 @@ function trainNow(h) {
     h.hp = Math.max(0, h.hp - 12 * Math.max(0, 1.2 - h.st.hlt / 100) * (tr.hp || 1));   // 健康が高くても体力は増えない(消費0が下限)
     if (h.hp < 25 && Math.random() < (25 - h.hp) / 60 * (1 - (h.st.hlt - 19) / 120)) { h.injured = 2 + Math.floor(Math.random() * 3); item.injured = h.injured; }
   }
-  item.hpB = hpB; item.hpA = h.hp; item.condB = condB; item.cost = cost;
+  item.hpB = hpB; item.hpA = h.hp; item.condB = condB; item.cost = g.cost;
   saveAll();
   runTrainingQueue([item], () => showStable());
 }
