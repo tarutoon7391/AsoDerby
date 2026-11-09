@@ -102,7 +102,7 @@ button.main{background:#2ecc71;color:#fff}
 #bet .axis{opacity:1;color:#ffcc33;font-weight:800;font-size:13px}
 #bet .bft{flex:none;display:flex;align-items:center;gap:6px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));border-top:1px solid rgba(255,255,255,.12);background:#0a131d}
 #bet .bft .u{display:flex;align-items:center;gap:4px}
-#bet .bft .u b{min-width:62px;text-align:center;font-size:14px}
+#bet .bft .u b{min-width:62px;text-align:center;font-size:14px;white-space:nowrap}
 #bet .bft .u button{padding:8px 9px}
 #bet .bft .tot{font-size:10px;opacity:.9;line-height:1.2;text-align:right;min-width:58px}
 #bet .bft .tot b{font-size:13px}
@@ -1493,7 +1493,7 @@ const comboTxt = (type, h) => h.map(i => i + 1).join(TYPE[type].ord ? '→' : '-
 const normSel = (type, h) => TYPE[type].ord ? [...h] : [...h].sort((a, b) => a - b);
 const betSheet = document.getElementById('bet'), settleSheet = document.getElementById('settle');
 
-const UNITS = [100, 500, 1000, 5000, 10000];
+const UNITS = [100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000];
 let unitIdx = 0, axis = -1, history = [], focusH = 0, focusT = 0, focusLock = 0, flash = '';
 const unit = () => UNITS[unitIdx];
 const slipTotal = () => slip.reduce((a, b) => a + b.amt, 0);

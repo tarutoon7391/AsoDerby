@@ -158,10 +158,10 @@ io.on('connection', sock => {
   // 馬券の成績(1レース分)
   sock.on('report', d => {
     if (!sock.data.pid || !d) return;
-    const bet = Math.max(0, Math.min(1e8, +d.bet || 0)), pay = Math.max(0, Math.min(1e9, +d.pay || 0));
+    const bet = Math.max(0, Math.min(1e12, +d.bet || 0)), pay = Math.max(0, Math.min(1e13, +d.pay || 0));
     const p = getPlayer(sock.data.pid);
     p.bet += bet; p.pay += pay; p.hits += Math.max(0, Math.min(100, +d.hits || 0)); p.n += Math.max(0, Math.min(100, +d.n || 0));
-    p.best = Math.max(p.best, Math.max(0, Math.min(1e9, +d.best || 0)));
+    p.best = Math.max(p.best, Math.max(0, Math.min(1e13, +d.best || 0)));
     save();
   });
 
