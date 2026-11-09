@@ -2136,7 +2136,7 @@ const STYLE_POS = { '逃げ': 0, '先行': 1, '差し': 2, '追込': 3, '大逃�
 const styleGauge = st => { const k = SUPER.has(st) ? 'sup' : SPECIAL.has(st) ? 'spc' : 'nor', p = STYLE_POS[st];
   return `<div class="sgauge ${k}"><div class="sgn">${st}</div><div class="chev">${['逃', '先', '差', '追'].map((n, i) =>
     `<span class="${i === p ? 'lit' : ''}"><i></i><small>${n}</small></span>`).join('')}</div></div>`; };
-const TRAIN_ICON = { spd: '🐎', sta: '🏊', brs: '⚡', gut: '⛰️', hlt: '🚶', turf: '🌱', dirt: '🏖️', rain: '🌧️', cond: '✨', rest: '😴', c_sg: '🔥', c_sb: '🌲', c_tg: '🏇', c_all: '💪' };
+const TRAIN_ICON = { spd: '🐎', sta: '🏊', brs: '⚡', gut: '⛰️', hlt: '🚶', turf: '🌱', dirt: '🏖️', rain: '🌧️', cond: '✨', rest: '😴', c_sg: '🔥', c_sb: '🌲', c_tg: '🏇', c_all: '💪', c_hr: '⛈️', c_td: '🌾', c_aall: '🏕️' };
 const TRAIN_DESC = {
   spd: '僚馬と並んで全力で追い切る。スピードが伸びる', sta: '水の中を泳いで心肺を鍛える。スタミナが伸びる',
   brs: '終いだけ一気に脚を使って前の馬を抜き去る。瞬発力が伸びる', gut: '急な坂を何本も駆け上がる。根性が伸びる',
@@ -2146,6 +2146,9 @@ const TRAIN_DESC = {
   c_sb: 'ウッドチップコースで終いを伸ばす。スピードと瞬発力がまとめて伸びるが、かなり疲れる',
   c_tg: '長い距離をじっくり乗り込む。スタミナと根性がまとめて伸びるが、かなり疲れる',
   c_all: '泊まり込みで基本能力をすべて鍛える。全部伸びるが、ヘトヘトになる',
+  c_hr: '雨の中、人が引いてじっくり歩かせる。健康と雨耐性がまとめて伸びるが、かなり疲れる',
+  c_td: '芝コースと砂浜を行き来して脚元を鍛える。芝とダートの適性がまとめて伸びるが、かなり疲れる',
+  c_aall: '泊まり込みで体づくりと馬場慣れを徹底する。健康と適性が全部伸びるが、ヘトヘトになる',
 };
 const locked = h => h.trained || h.rested;
 const hpBar = h => `<div class="hpb"><span>体力</span><div class="bar"><i style="width:${h.hp}%;background:${h.hp > 60 ? '#6aa84f' : h.hp > 30 ? '#e8a33c' : '#d0533c'}"></i></div><span>${Math.round(h.hp)}</span></div>`;
@@ -2174,7 +2177,7 @@ function horseCard(h) {
       const g = GRADES[a.grade], t = TRAIN_OF[a.stat];
       if (!trainDetail) body = `<div class="tlist">${TRAININGS.map(x => `<button data-tstat="${x.k}" data-id="${h.id}" class="${x.ks ? 'combo' : ''}">${x.ks ? '<em class="tired">疲労大</em>' : ''}<span class="ti">${TRAIN_ICON[x.k]}</span><b>${x.n}</b><small>${statName(x.k)}</small></button>`).join('')}</div>`;
       else body = `<div class="tdh"><button class="tback" data-tlist>‹ 一覧</button><span class="ti">${TRAIN_ICON[t.k]}</span><b>${t.n}</b>
-        <div class="tright"><div>${a.stat === 'cond' ? `調子 ${condTxt(h)}` : t.ks || HIDDEN_STATS.has(a.stat) ? `${t.ks && t.ks.length === 4 ? '基本能力すべて' : statName(a.stat)}を鍛える` : `${statName(a.stat)} ${rankChip(h.st[a.stat])} ${Math.round(h.st[a.stat])}`}</div></div></div>
+        <div class="tright"><div>${a.stat === 'cond' ? `調子 ${condTxt(h)}` : t.ks || HIDDEN_STATS.has(a.stat) ? `${t.lbl || statName(a.stat)}を鍛える` : `${statName(a.stat)} ${rankChip(h.st[a.stat])} ${Math.round(h.st[a.stat])}`}</div></div></div>
       <div class="tdesc">${TRAIN_DESC[t.k]}</div>
       ${(() => {
         const adv = hw(h) === 2 && (trainAdv == null ? !!GRADES[a.grade].adv : trainAdv);
@@ -2923,7 +2926,11 @@ const TRAININGS = [
   { k: 'c_sg', ks: ['spd', 'gut'], n: '坂路併せ馬', s: 'slope', f: 0.85, hp: 2.0 },
   { k: 'c_sb', ks: ['spd', 'brs'], n: 'ウッド追い切り', s: 'last1f', f: 0.85, hp: 2.0 },
   { k: 'c_tg', ks: ['sta', 'gut'], n: '長めの乗り込み', s: 'turf', f: 0.85, hp: 2.0 },
-  { k: 'c_all', ks: ['spd', 'sta', 'brs', 'gut'], n: '強化合宿', s: 'awase', f: 0.75, hp: 3.2 },
+  { k: 'c_all', ks: ['spd', 'sta', 'brs', 'gut'], n: '強化合宿', s: 'awase', f: 0.75, hp: 3.2, lbl: '基本能力すべて' },
+  // 健康・適性の複合トレーニング(係数は基本能力の複合と同じ)
+  { k: 'c_hr', ks: ['hlt', 'rain'], n: '雨中の引き運動', s: 'mud', f: 0.85, hp: 2.0 },
+  { k: 'c_td', ks: ['turf', 'dirt'], n: '芝・砂の二刀流', s: 'beach', f: 0.85, hp: 2.0 },
+  { k: 'c_aall', ks: ['hlt', 'turf', 'dirt', 'rain'], n: '適性強化合宿', s: 'turf', f: 0.75, hp: 3.2, lbl: '健康・適性すべて' },
 ];
 const REST_T = { k: 'rest', n: '休養', s: 'care' };   // 休養したときの演出
 const TRAIN_OF = Object.fromEntries([...TRAININGS, REST_T].map(t => [t.k, t]));
@@ -3115,7 +3122,7 @@ function nextTraining() {
   trainEl.style.display = 'flex';
   // 結果カードは最初から(見えない状態で)置いておき、高さが途中で変わらないようにする
   const rest = trainQueue.length;
-  trainEl.innerHTML = `<div class="thead"><span class="ti">${TRAIN_ICON[item.t.k]}</span><div class="tt"><b>${item.t.n}</b><small>${item.rest ? 'ブラッシング＆放牧' : GRADES[item.grade].fac} ・ ${item.h.name}</small></div><span class="tg g${item.grade}">${item.t.ks && item.t.ks.length === 4 ? '基本能力すべて' : statName(item.t.k)}</span></div>
+  trainEl.innerHTML = `<div class="thead"><span class="ti">${TRAIN_ICON[item.t.k]}</span><div class="tt"><b>${item.t.n}</b><small>${item.rest ? 'ブラッシング＆放牧' : GRADES[item.grade].fac} ・ ${item.h.name}</small></div><span class="tg g${item.grade}">${item.t.lbl || statName(item.t.k)}</span></div>
     <div class="tbodyx"><div class="tslot"><div class="tr res hide">${resultHTML(item)}</div><div class="twait"><span class="dots">トレーニング中</span><small>タップでスキップ</small></div></div>
     <button class="tnext hide">${rest ? `次へ（あと${rest}頭）` : '続ける'}</button></div>`;
   refreshView();
@@ -3152,7 +3159,7 @@ function resultHTML(it) {
       ${it.ok ? ` → <span class="arw" style="color:${c1.c};transform:rotate(${c1.a}deg)">➜</span><b>${c1.n}</b><small>（来週）</small>` : '<small>（変わらず）</small>'}</div>`;
     talk = pickTalk(it.great ? 'great' : it.ok ? 'cok' : 'cng');
   } else {
-    main = `<div class="rstat"><span class="rn">${statName(it.t.k)}</span><small>${it.great ? 'ぐんと伸びた手ごたえ！' : it.ok ? '少しずつ力がついてきた' : 'あまり身が入らなかった'}</small></div>`;
+    main = `<div class="rstat"><span class="rn">${it.t.lbl || statName(it.t.k)}</span><small>${it.great ? 'ぐんと伸びた手ごたえ！' : it.ok ? '少しずつ力がついてきた' : 'あまり身が入らなかった'}</small></div>`;
     talk = pickTalk(it.great ? 'great' : it.ok ? 'ok' : 'ng');
   }
   if (it.capTalk) talk = it.capTalk;
