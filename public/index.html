@@ -1537,7 +1537,10 @@ function planFinish() {
   const VMAX = 20.5, vmax = r => SUPER.has(r.o.style) ? 22 : VMAX, gaps = [0];
   // 勝ち馬が2着馬より強いほど、1〜2着の差が少しだけ開く(強さの比の対数×0.1秒、最大+0.5秒 ≒ 3.5馬身)
   const w1 = wt[planOrder[0]], w2 = wt[planOrder[1]], dom = w1 && w2 ? Math.min(0.5, Math.max(0, Math.log(w1 / w2)) * 0.1) : 0;
-  for (let k = 1; k < N_HORSE; k++) gaps.push(gaps[k - 1] + (k === 1 ? 0.05 + Math.random() * 0.35 + dom * (0.6 + Math.random() * 0.8) : 0.03 + Math.random() * 0.45));
+  // まれ(4%)に「ぶっちぎり」：1〜2着の差が3〜6倍になる。強さの差の上乗せとかけ算なので、強い馬ほどとんでもない着差になる
+  const blow = Math.random() < 0.04 ? 3 + Math.random() * 3 : 1;
+  for (let k = 1; k < N_HORSE; k++) gaps.push(gaps[k - 1] + (k === 1 ? (0.05 + Math.random() * 0.35 + dom * (0.6 + Math.random() * 0.8)) * blow : 0.03 + Math.random() * 0.45));
+  race.margin = gaps[1];                                                 // 1〜2着の予定の差(秒)。実況で使う
   const lead = Math.max(...runners.map(r => r.trav));
   let T0 = raceT + (D - lead) / 18;
   planOrder.forEach((h, k) => { const r = runners[h]; T0 = Math.max(T0, raceT + runTime(r.v, vmax(r), D - r.trav) - gaps[k] + 0.05); });
@@ -3569,6 +3572,9 @@ function genCommentary(order) {
       : ledIn ? (/大逃げ/.test(w.o.style) ? CT.winOoni : /逃げ/.test(w.o.style) ? CT.winNige.concat(CT.winHold) : CT.winHold)
       : CT.win;
     let t = close ? fill(pk(CT.photo), { a: nm(w) }) : fill(pk(wl), { a: nm(w) });
+    const mb = (race.margin || 0) * 17 / BASHIN;                         // 着差(馬身)のめやす
+    if (mb >= 10) t += ' ' + pk(['とんでもない大差！', 'これは大差だ！後続は影も形も見えない！', '信じられない！何馬身ちぎったんだ！']);
+    else if (mb >= 5) t += ' ' + pk(['ぶっちぎりの圧勝！', '後続を突き放して圧勝！', '強い！強すぎる！']);
     if (p === 1) t += ' ' + pk(CT.fav); else if (p >= 8) t += ' ' + fill(pk(['大波乱です！', '{p}番人気の大金星！']), { p });
     say(t, 5); com.shownT = 99; com.ended = true;
     const big = bigRank(), a = nm(w);
