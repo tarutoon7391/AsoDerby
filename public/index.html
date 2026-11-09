@@ -1615,9 +1615,11 @@ const comboTxt = (type, h) => h.map(i => i + 1).join(TYPE[type].ord ? '→' : '-
 const normSel = (type, h) => TYPE[type].ord ? [...h] : [...h].sort((a, b) => a - b);
 const betSheet = document.getElementById('bet'), settleSheet = document.getElementById('settle');
 
-const UNITS = [100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000];
+const UNITS = [100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5e6, 1e7, 5e7, 1e8, 5e8, 1e9, 5e9, 1e10];   // 100円〜100億円
 let unitIdx = 0, axis = -1, history = [], focusH = 0, focusT = 0, focusLock = 0, flash = '';
 const unit = () => UNITS[unitIdx];
+// 掛け金の表示：1000万円以上は「〇〇万円／〇億円」で短く
+const yenU = v => v >= 1e8 ? `${v / 1e8}億円` : v >= 1e7 ? `${v / 1e4}万円` : yen(v);
 const slipTotal = () => slip.reduce((a, b) => a + b.amt, 0);
 const betOn = (type, h) => { const b = slip.find(x => x.key === comboKey(type, h)); return b ? b.amt : 0; };
 
@@ -1672,7 +1674,7 @@ function renderBet() {
   }).join('');
   const hint = pair ? (axis < 0 ? `${t.name}：まず${betType === 'umatan' ? '1着' : '軸'}にする馬をタップ`
     : `${t.name}：${axis + 1}番と組む馬のオッズを押すと購入（${betType === 'umatan' ? `${axis + 1}番→相手の順` : '順不同'}）`)
-    : `${t.name}：オッズを押すたびに${yen(unit())}ずつ購入`;
+    : `${t.name}：オッズを押すたびに${yenU(unit())}ずつ購入`;
   betSheet.innerHTML = `
   <div class="bhd">
     <div class="ttl"><b>${race.online ? '🌐対戦' : `第${raceNo}R`}</b> ${raceTitle()}<span class="money">残り ${yen(money - total)}</span></div>
@@ -1682,7 +1684,7 @@ function renderBet() {
   </div>
   <div class="blist">${rows}</div>
   <div class="bft">
-    <div class="u"><button data-u="-1">◀</button><b>${yen(unit())}</b><button data-u="1">▶</button></div>
+    <div class="u"><button data-u="-1">◀</button><b>${yenU(unit())}</b><button data-u="1">▶</button></div>
     <div class="tot">${slip.length}点<br><b>${yen(total)}</b></div>
     <button data-undo ${history.length ? '' : 'disabled'}>↶</button>
     <button id="buyGo" class="main" ${race.online && online.waiting ? 'disabled' : ''}>${race.online ? (online.waiting ? '待機中…' : slip.length ? '購入して<br>待機' : '見送って<br>待機') : slip.length ? '購入して<br>スタート' : '見送って<br>スタート'}</button>
