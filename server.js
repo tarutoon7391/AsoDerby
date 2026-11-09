@@ -23,7 +23,10 @@ app.set('trust proxy', 1);          // Railwayなどのプロキシ越しでも�
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 1e6 });
 app.use(express.json({ limit: '700kb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+// ゲーム本体(HTML)と manifest は毎回サーバーに確認させる(更新がすぐ反映されるように)。画像などは通常どおり
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, file) => { if (/\.(html|webmanifest)$/.test(file)) res.setHeader('Cache-Control', 'no-cache'); },
+}));
 
 // ===== プレイヤーデータ(ランキング) =====
 // players: pid -> { pid, name, 成績..., (アカウントなら) pass:{salt,hash}, tokens:[], save:{牧場データ}, created }
