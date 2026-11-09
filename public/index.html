@@ -1986,12 +1986,16 @@ const atCap = (h, k) => k !== 'cond' && h.st[k] >= capOf(h, k) - 0.5;
 const avgCap = h => CORE_KEYS.slice(0, 4).reduce((a, k) => a + capOf(h, k), 0) / 4;
 // 実績ボーナス(1頭あたり最大3)：G2・G3勝ち1回0.25(4回まで)、G1勝ち1回0.5(4回まで)、海外G1勝ち+1、レジェンド勝ち+1.5
 // 上限まで鍛えてG1を勝ち続けると、だいたい5世代目でレジェンドを勝てる水準(上限95前後)に届く
+// 幻境での1勝あたりの実績(新馬・未勝利から入る。同じクラスは4勝まで、合計10まで)
+const W2_ACH = [1, 1, 1.5, 2, 2.5, 3, 4, 5];
 function achOf(h) {
   if (h.ach !== undefined) return h.ach;
-  const W0 = h.wins || {}, W = {}; for (let c = 0; c < 8; c++) W[c] = (W0[c] || 0) + (W0[c + W2] || 0);   // 第2層の勝ちも同じ格として数える
-  return Math.min(3, 0.25 * Math.min(4, (W[3] || 0) + (W[4] || 0)) + 0.5 * Math.min(4, W[5] || 0) + (W[6] ? 1 : 0) + (W[7] ? 1.5 : 0));
+  const W = h.wins || {};
+  const w1 = Math.min(3, 0.25 * Math.min(4, (W[3] || 0) + (W[4] || 0)) + 0.5 * Math.min(4, W[5] || 0) + (W[6] ? 1 : 0) + (W[7] ? 1.5 : 0));
+  let w2 = 0; for (let c = 0; c < 8; c++) w2 += W2_ACH[c] * Math.min(4, W[c + W2] || 0);
+  return w1 + Math.min(10, w2);                                   // 第1層は最大3、幻境は最大10
 }
-const capGain = (a, b) => 2.5 + achOf(a) + achOf(b);            // 子の上限は親の実際の能力の平均＋(2.5〜8.5)
+const capGain = (a, b) => 2.5 + achOf(a) + achOf(b);            // 子の上限は親の実際の能力の平均＋(2.5〜28.5)
 // 第2層へ行ける親：レジェンドカップ通算3勝、または自身が第2層の馬
 const w2Parent = p => hw(p) === 2 || ((p.wins || {})[7] || 0) >= 3;
 function breedFoal(a, b) {
