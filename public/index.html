@@ -378,6 +378,25 @@ button.main{background:#2ecc71;color:#fff}
 #stable .woodback:active{transform:translateY(2px)}
 #stable .plan{font-size:12px;margin-bottom:8px;color:#5a3d22}
 #stable .snav button:disabled{opacity:.35}
+#stable .snav button.pst{font-size:9.5px;letter-spacing:-.8px;white-space:nowrap}
+#stable .snav button.pst.locked{opacity:.5}
+#stable .snav button.pst:not(.locked) span{filter:drop-shadow(0 0 4px rgba(255,220,120,.9))}
+#stable .plock{text-align:center;padding:50px 20px;color:#6b4a2a}
+#stable .plock .pl1{font-size:54px;opacity:.6}
+#stable .plock b{display:block;font-size:18px;margin:6px 0}
+#stable .plock p{font-size:12px;opacity:.75}
+#stable .pwrap{display:flex;flex-direction:column;gap:10px}
+#stable .pcard{background:#fff;border:1.5px solid #e1cda8;border-radius:14px;padding:12px 14px}
+#stable .pcard.rebirth{background:linear-gradient(180deg,#fff8e6,#fff);border-color:#e8c24a}
+#stable .pcard .ph{font-size:15px;font-weight:900;margin-bottom:6px;color:#4a3518}
+#stable .pcard p{font-size:12px;line-height:1.5;margin:0 0 6px}
+#stable .pcard ul{font-size:11px;margin:0 0 8px;padding-left:18px;line-height:1.6;opacity:.85}
+#stable .pcard .pstat{font-size:12px;margin:4px 0 8px}
+#stable .pcard .pstat b{font-size:16px;color:#b8860b}
+#stable .pnotice{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:62;width:min(320px,86%);background:linear-gradient(180deg,#fffbe8,#fff);border:3px solid #e8c24a;border-radius:18px;padding:18px 16px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+#stable .pnotice .pn1{font-size:44px}
+#stable .pnotice b{display:block;font-size:17px;margin:4px 0 6px;color:#4a3518}
+#stable .pnotice p{font-size:12px;line-height:1.55;margin:0 0 12px;color:#6b4a2a}
 #stable.half .sbody{overflow-y:auto;padding:8px 10px}
 #stable .panel{background:#fffaf0;border:1px solid #e1cda8;border-radius:12px;padding:9px 10px;box-shadow:0 2px 6px rgba(120,80,40,.12)}
 #stable .ph{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:6px}
@@ -1926,7 +1945,7 @@ const SPECIAL_PRICE = { '大逃げ': 30000, 'まくり': 30000, '直線一気': 
 // 選べる脚質：通常4種＋生まれ持った脚質＋お金で習得した特殊脚質
 const styleChoices = h => { const inn = h.innate || h.style; return [...NORMAL_STYLES, ...(NORMAL_STYLES.includes(inn) ? [] : [inn]), ...(h.learned || []).filter(x => x !== inn)]; };
 const styleLocked = h => Object.keys(SPECIAL_PRICE).filter(st => !styleChoices(h).includes(st));
-let game = { year: 1, week: 1, horses: [], sale: [], retired: [], tickets: [], btix: {}, log: [], nextId: 1 };
+let game = { year: 1, week: 1, horses: [], sale: [], retired: [], tickets: [], btix: {}, log: [], nextId: 1, prestige: { open: false, pts: 0, count: 0, ups: {} } };
 let stableView = 'list', selId = -1, naming = null;   // naming: 入厩時の名前・毛色決め
 const escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let stableOpen = false, stableTab = 'stable', gachaResult = null, skipRace = false, pendingOwned = [];
@@ -1945,10 +1964,14 @@ function myStats() {
   // そのランキングの功績を一番残した馬(G1勝利数・レジェンド勝利数が最多の馬)
   const ace = f => { const h = all.reduce((b, x) => !b || f(x) > f(b) ? x : b, null); return h && f(h) > 0 ? { name: h.name, n: f(h) } : null; };
   const W = h => h.wins || {};
-  return { g1: game.g1Total || 0, lg: game.lgTotal || 0, top: top && top.prize > 0 ? { name: top.name, prize: top.prize } : null,
-    g1h: ace(h => (W(h)[5] || 0) + (W(h)[6] || 0)), lgh: ace(h => W(h)[7] || 0),
+  // 歴代の記録：馬を消しても残るよう、これまでの最高と比べて大きいほうを覚えておく
+  const B = game.best || (game.best = {});
+  const keep = (k, cur, v) => { if (cur && (!B[k] || v(cur) > v(B[k]))) B[k] = { ...cur }; return B[k] || null; };
+  return { g1: game.g1Total || 0, lg: game.lgTotal || 0, top: keep('top', top && top.prize > 0 ? { name: top.name, prize: top.prize } : null, x => x.prize),
+    g1h: keep('g1h', ace(h => (W(h)[5] || 0) + (W(h)[6] || 0)), x => x.n), lgh: keep('lgh', ace(h => W(h)[7] || 0), x => x.n),
     // 幻境(第2層)のランキング用。幻境に馬がいる人だけ載る
-    w2: hasW2(), g1x: game.g1x || 0, lgx: game.lgx || 0, g1xh: ace(h => (W(h)[13] || 0) + (W(h)[14] || 0)), lgxh: ace(h => W(h)[15] || 0) };
+    w2: hasW2() || (game.lgx || 0) + (game.g1x || 0) > 0, g1x: game.g1x || 0, lgx: game.lgx || 0,
+    g1xh: keep('g1xh', ace(h => (W(h)[13] || 0) + (W(h)[14] || 0)), x => x.n), lgxh: keep('lgxh', ace(h => W(h)[15] || 0), x => x.n) };
 }
 let statsT = 0;
 function sendStats() {
@@ -1971,6 +1994,9 @@ function applySaveData(d) {
     game.g1Total = all.reduce((a, h) => a + ((h.wins || {})[5] || 0) + ((h.wins || {})[6] || 0), 0);
     game.lgTotal = all.reduce((a, h) => a + ((h.wins || {})[7] || 0), 0);
   }
+  // プレステージ(転生)の記録。転生しても消えない
+  if (!game.prestige || typeof game.prestige !== 'object') game.prestige = { open: false, pts: 0, count: 0, ups: {} };
+  if (!game.prestige.open && ((game.lgx || 0) > 0 || [...(game.horses || []), ...(game.retired || [])].some(h => (h.wins || {})[15]))) game.prestige.open = true;   // すでに条件を満たしている人は演出なしで解放
   if (game.g1x == null || game.lgx == null) {                       // 幻境の通算勝利数(古いデータはいまいる馬から作る)
     const all = [...(game.horses || []), ...(game.retired || [])];
     game.g1x = all.reduce((a, h) => a + ((h.wins || {})[13] || 0) + ((h.wins || {})[14] || 0), 0);
@@ -2300,7 +2326,7 @@ async function api(path, body) {
   if (!res.ok) throw new Error(j.error || 'サーバーエラー');
   return j;
 }
-const freshGame = () => ({ year: 1, week: 1, horses: [], sale: [], retired: [], tickets: [], btix: {}, log: [], nextId: 1 });
+const freshGame = () => ({ year: 1, week: 1, horses: [], sale: [], retired: [], tickets: [], btix: {}, log: [], nextId: 1, prestige: { open: false, pts: 0, count: 0, ups: {} } });
 async function bootAuth() {
   let r;
   try {
@@ -2581,7 +2607,7 @@ function rankingHTML() {
   const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><div class="rmid"><b>${escO(p.name)}</b><small>${seenTag(p)}${sub(p) ? `<span class="rsub">${sub(p)}</span>` : ''}</small></div><em>${fmt(val(p))}</em></div>`;
   return `<div class="rworld"><button data-on="rworld" data-v="1" class="${w2v ? '' : 'on'}">通常</button><button data-on="rworld" data-v="2" class="w2 ${w2v ? 'on' : ''}">🔮 幻境</button></div>
     <div class="rsort ${w2v ? 'w2' : ''}">${tabs.map(k => [k, defs[k]]).map(([k, [n]]) => `<button data-on="sort" data-v="${k}" class="${S === k ? 'on' : ''}">${n}</button>`).join('')}<button data-on="refresh" class="rf">↻</button></div>
-    <div class="hint">${bet ? '普段のレースで買った馬券の成績が自動で集計されます' : S === 'top' ? '所持馬(現役・引退)の中で一番賞金を稼いだ馬と、その獲得賞金' : S === 'g1' ? '自分の馬が勝ったG1(海外G1を含む)の通算勝利数' : S === 'lg' ? '自分の馬が勝ったレジェンドカップの通算勝利数'
+    <div class="hint">${bet ? '普段のレースで買った馬券の成績が自動で集計されます' : S === 'top' ? 'これまで育てた馬(手放した馬も含む)の中で、一番賞金を稼いだ馬と獲得賞金' : S === 'g1' ? '自分の馬が勝ったG1(海外G1を含む)の通算勝利数' : S === 'lg' ? '自分の馬が勝ったレジェンドカップの通算勝利数'
       : S === 'g1x' ? '🔮 幻境：自分の馬が勝った幻・G1(異界G1を含む)の通算勝利数。幻境に馬がいる人だけ' : '🔮 幻境：自分の馬が勝った幻境レジェンドの通算勝利数。幻境に馬がいる人だけ'}</div>
     ${list.length ? list.slice(0, 30).map(row).join('') : '<div class="empty">まだ記録がありません。馬券を買ってレースを観戦しよう</div>'}
     ${myIdx >= 30 ? `<div class="lb2">あなた</div>${row(list[myIdx], myIdx)}` : ''}`;
@@ -2650,6 +2676,21 @@ function seenTag(p) {
   const m = Math.floor((Date.now() - p.ls) / 60000);
   const t = m < 1 ? 'たった今' : m < 60 ? `${m}分前` : m < 1440 ? `${Math.floor(m / 60)}時間前` : m < 10080 ? `${Math.floor(m / 1440)}日前` : '1週間以上前';
   return `<span class="seen">${t}</span>`;
+}
+// ===== プレステージ(転生) =====
+function prestigeHTML() {
+  const P = game.prestige;
+  if (!P.open) return `<div class="plock"><div class="pl1">🔒</div><b>プレステージ</b><p>幻境レジェンドを1度でも勝つと解放されます</p></div>`;
+  return `<div class="pwrap">
+    <div class="pcard rebirth"><div class="ph">🔄 転生</div>
+      <p>今の牧場をすべてリセットして1年目からやり直し、<b>転生ポイント</b>を受け取ります。</p>
+      <ul><li>消えるもの：馬・引退馬・配合券・所持金・年数</li><li>残るもの：転生ポイントと、ショップで強化した内容</li></ul>
+      <div class="pstat"><span>転生回数 <b>${P.count}</b>回</span></div>
+      <button class="main" disabled>転生する（準備中）</button></div>
+    <div class="pcard shop"><div class="ph">🛒 転生ポイントショップ</div>
+      <div class="pstat"><span>所持ポイント <b>${P.pts.toLocaleString()}</b> pt</span></div>
+      <div class="empty">ショップの品ぞろえは準備中です</div></div>
+  </div>`;
 }
 function bulkDelHTML() {
   const rows = Object.values(BRAR).map(r => [r, game.tickets.filter(h => h.rar === r.n).length]).filter(([, n]) => n);
@@ -2731,6 +2772,8 @@ function renderStable() {
     body = `<div class="hint">毎週4頭が上場されます（厩舎は最大${MAX_HORSES}頭）</div>` + game.sale.map(saleCard).join('');
   } else if (stableTab === 'online') {
     body = onlineHTML();
+  } else if (stableTab === 'prestige') {
+    body = prestigeHTML();
   } else if (stableTab === 'gacha') {
     body = `<div class="gacha">
       <div class="rates">${GACHA.map(g => `<span style="color:${g.c}">${g.n} ${Math.round(g.p * 100)}%</span>`).join(' / ')}</div>
@@ -2756,7 +2799,8 @@ function renderStable() {
   </div>
   ${stableEl.classList.contains('half') ? `<div class="v3d" style="height:${pastureH()}px"><button class="woodback" data-back aria-label="一覧に戻る">←</button>${detailSel ? horseBadge(detailSel) : ''}${game.horses.length > 1 ? '<button class="hnav l" data-hnav="-1" aria-label="前の馬">‹</button><button class="hnav r" data-hnav="1" aria-label="次の馬">›</button>' : ''}</div>` : ''}
   <div class="sbody">${body}</div>
-  <nav class="snav">${detailSel ? detailNav(detailSel) : [['stable', '🏠', '厩舎'], ['sale', '🔨', 'セリ'], ['gacha', '🎰', 'ガチャ'], ['inherit', '🧬', '継承'], ['online', '🌐', 'オンライン']].map(([k, ic, n]) => `<button data-stab="${k}" class="${stableTab === k ? 'on' : ''}"><span>${ic}</span>${n}</button>`).join('')}</nav>
+  <nav class="snav">${detailSel ? detailNav(detailSel) : [['stable', '🏠', '厩舎'], ['sale', '🔨', 'セリ'], ['gacha', '🎰', 'ガチャ'], ['inherit', '🧬', '継承'], ['online', '🌐', 'オンライン'], ['prestige', game.prestige.open ? '✨' : '🔒', 'プレステージ']].map(([k, ic, n]) => `<button data-stab="${k}" class="${stableTab === k ? 'on' : ''} ${k === 'prestige' ? 'pst' + (game.prestige.open ? '' : ' locked') : ''}"><span>${ic}</span>${n}</button>`).join('')}</nav>
+  ${game.prestige.notice ? `<div class="cfbg"></div><div class="pnotice"><div class="pn1">🔓</div><b>プレステージが解放されました！</b><p>幻境レジェンドを制覇したことで、ホーム画面の右下の<br>「✨ プレステージ」から転生できるようになりました</p><button class="main" data-pnotice>OK</button></div>` : ''}
   ${naming ? namingHTML() : ''}
   ${pendingAsk ? `<div class="cfbg" data-ask="no"></div><div class="cfsheet">
     ${pendingAsk.check ? `<label class="cfchk"><input type="checkbox" id="askChk" ${pendingAsk.check.on ? 'checked' : ''}><span><b>${pendingAsk.check.label}</b><small>${pendingAsk.check.sub}</small></span></label>` : ''}
@@ -2854,6 +2898,7 @@ stableEl.addEventListener('click', ev => {
   else if (el.id === 'nameOk' && naming) { game.log = [`${naming.from}：${naming.h.name}（${naming.h.coatName}）が${hw(naming.h) === 2 ? '第2層「幻境」の' : ''}厩舎に入りました`]; if (naming.canW2) game.view = hw(naming.h); naming = null; pHorseId = -1; }
   else if (naming) return;                                  // 名付け中は他の操作をしない
   if (d.coat !== undefined || d.nworld !== undefined || d.rname !== undefined || el.id === 'nameOk') {}
+  else if (d.pnotice !== undefined) { delete game.prestige.notice; saveAll(); }
   else if (d.stab) { stableTab = d.stab; gachaResult = null; bgachaResult = null; stableView = 'list'; breedSel = breedSel.filter(breedHorse); if (d.stab === 'online') { connectOnline(); if (sock && online.connected) sock.emit('getRanking'); } }
   else if (d.sel) { selId = +d.sel; stableView = 'detail'; detailTab = 'info'; }
   else if (d.hnav) {                                      // 育成画面の左右矢印で前後の馬へ(タブはそのまま)
@@ -2936,7 +2981,8 @@ function applyResult(h, pos, c, name) {
     if (c === 5 || c === 6) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🏆G1制覇！（今年${h.yearG1}勝）`; game.g1Total = (game.g1Total || 0) + 1; }
     if (c === 7) { msg += ' 👑レジェンド制覇！'; game.lgTotal = (game.lgTotal || 0) + 1; if ((h.wins[7] || 0) >= 3) msg += ' ✨この馬の子は第2層「幻境」へ行けます'; }
     if (c === 13 || c === 14) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🔮幻境G1制覇！（今年${h.yearG1}勝）`; game.g1x = (game.g1x || 0) + 1; }
-    if (c === 15) { msg += ' 🌌幻境レジェンド制覇！'; game.lgx = (game.lgx || 0) + 1; }
+    if (c === 15) { msg += ' 🌌幻境レジェンド制覇！'; game.lgx = (game.lgx || 0) + 1;
+      if (!game.prestige.open) { game.prestige.open = true; game.prestige.notice = true; msg += ' 🔓プレステージ解放！'; } }
     if (BGACHAS[c]) { game.btix[c] = (game.btix[c] || 0) + 1; msg += ` 🎟${BGACHAS[c].n}ガチャ券ゲット`; }
   }
   game.log.push(msg);
