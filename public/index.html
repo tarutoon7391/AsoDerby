@@ -480,6 +480,12 @@ button.main{background:#2ecc71;color:#fff}
 #stable .wtabs .w2.on{box-shadow:0 0 0 2px #e8c24a,0 0 14px rgba(180,140,255,.8);color:#fff}
 #stable .wtabs .w2:not(.on),#stable .wtabs .w1:not(.on){opacity:.75}
 #stable .hbtag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:900;color:#1f7a3a;background:#dff3e5;vertical-align:middle}
+#stable .brow2{display:flex;gap:6px;align-items:center;margin-top:6px}
+#stable .brow2 .bdel{margin:0;flex:1}
+#stable .hofadd{flex:1;padding:6px 8px;border-radius:9px;font-size:11px;font-weight:900;background:linear-gradient(180deg,#fff2c2,#f2c94c);border:1.5px solid #d4a62a;color:#4a3518}
+#stable .hofdone{flex:1;text-align:center;font-size:11px;font-weight:900;color:#b8860b}
+#stable .hofc{border:2px solid #e8c24a;background:linear-gradient(180deg,#fffbe8,#fff)}
+#stable .hofi{font-size:11px;opacity:.8;margin:2px 0 4px}
 #stable .wtag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:900;color:#fff;background:linear-gradient(135deg,#5b3f9a,#b06ab3);vertical-align:middle}
 #stable .wtag.gate{background:linear-gradient(135deg,#e8c24a,#b06ab3)}
 #stable .sched.w2{background:linear-gradient(180deg,#2b1f5c,#45307e);color:#efe6ff}
@@ -1977,7 +1983,7 @@ function resetSave() {
 function saveAll() { try { localStorage.setItem('blockhorse_save', JSON.stringify({ ...game, money })); } catch (e) {} pushSave(); sendStats(); }
 // ランキング用：G1・レジェンドの累計勝利数と、所持馬(現役＋引退)で一番稼いだ馬
 function myStats() {
-  const all = [...(game.horses || []), ...(game.retired || [])];
+  const all = [...(game.horses || []), ...(game.retired || []), ...hofList()];
   const top = all.reduce((b, h) => !b || (h.prize || 0) > (b.prize || 0) ? h : b, null);
   // そのランキングの功績を一番残した馬(G1勝利数・レジェンド勝利数が最多の馬)
   const ace = f => { const h = all.reduce((b, x) => !b || f(x) > f(b) ? x : b, null); return h && f(h) > 0 ? { name: h.name, n: f(h) } : null; };
@@ -2497,12 +2503,12 @@ function onlineAction(act, d, el) {
   if (!sock || !online.connected) return;
   if (act === 'sort') { online.rankSort = d.v; onlineRerender(); return; }
   if (act === 'refresh') { sock.emit('getRanking'); return; }
-  if (act === 'pick') { online.vsHorseId = +d.v; if (online.room) sock.emit('setHorse', horseForVs(game.retired.find(h => h.id === online.vsHorseId))); renderStable(); return; }
-  if (act === 'create') { sock.emit('createRoom', { horse: horseForVs(game.retired.find(h => h.id === online.vsHorseId)) }); return; }
+  if (act === 'pick') { online.vsHorseId = +d.v; if (online.room) sock.emit('setHorse', horseForVs(vsPool().find(h => h.id === online.vsHorseId))); renderStable(); return; }
+  if (act === 'create') { sock.emit('createRoom', { horse: horseForVs(vsPool().find(h => h.id === online.vsHorseId)) }); return; }
   if (act === 'join') {
     const inp = document.getElementById('onCode'), code = inp ? inp.value.trim().toUpperCase() : '';
     if (code.length < 4) { online.err = 'ルームコードを4文字で入力してね'; renderStable(); return; }
-    sock.emit('joinRoom', { code, horse: horseForVs(game.retired.find(h => h.id === online.vsHorseId)) }); return;
+    sock.emit('joinRoom', { code, horse: horseForVs(vsPool().find(h => h.id === online.vsHorseId)) }); return;
   }
   if (act === 'leave') { sock.emit('leaveRoom'); online.room = null; online.lastVs = null; renderStable(); return; }
   if (act === 'opt') { online.hostOpt[d.k] = d.k === 'surface' ? d.v : +d.v; renderStable(); return; }
@@ -2634,9 +2640,9 @@ function rankingHTML() {
     ${myIdx >= 30 ? `<div class="lb2">あなた</div>${row(list[myIdx], myIdx)}` : ''}`;
 }
 function vsHTML() {
-  const horses = game.retired, mine = horses.find(h => h.id === online.vsHorseId) || horses[0];   // 対戦に出せるのは引退馬だけ
+  const horses = vsPool(), mine = horses.find(h => h.id === online.vsHorseId) || horses[0];   // 対戦に出せるのは引退馬と殿堂馬
   if (mine && online.vsHorseId !== mine.id) online.vsHorseId = mine.id;
-  const pickRow = `<div class="lb2">出走させる馬（引退馬から選ぶ）</div>${horses.length ? `<div class="vpick">${horses.map(h => `<button data-on="pick" data-v="${h.id}" class="${h.id === online.vsHorseId ? 'on' : ''}">${sexMark(h)} ${escO(h.name)}<small>${h.rec.join('-')} ・ ${h.style}</small></button>`).join('')}</div>` : '<div class="empty">まだ引退馬がいません。育てきった馬が引退すると対戦に出せます</div>'}`;
+  const pickRow = `<div class="lb2">出走させる馬（引退馬・🏆殿堂馬から選ぶ）</div>${horses.length ? `<div class="vpick">${horses.map(h => `<button data-on="pick" data-v="${h.id}" class="${h.id === online.vsHorseId ? 'on' : ''}">${h.hof ? '🏆' : ''}${sexMark(h)} ${escO(h.name)}<small>${h.rec.join('-')} ・ ${h.style}</small></button>`).join('')}</div>` : '<div class="empty">まだ引退馬がいません。育てきった馬が引退すると対戦に出せます</div>'}`;
   const err = online.err ? `<div class="onerr">${escO(online.err)}</div>` : '';
   const res = online.lastVs ? `<div class="vres"><b>🏁 前回の結果</b>${online.lastVs.map((r, k) => `<div class="${r.pid === player.id ? 'me' : ''}"><span>${r.pos}着</span><b>${escO(r.horse)}</b><small>${escO(r.name)}</small>${k === 0 ? '<em>WIN</em>' : ''}</div>`).join('')}</div>` : '';
   if (!online.room) {
@@ -2711,6 +2717,11 @@ const PSHOP = [
   { k: 'stable', ic: '🏠', n: '厩舎拡張', cat: '特別', max: 4, cost: l => 3 + 2 * l, fx: l => `厩舎の最大頭数 ${4 + l}頭`, d: '同時に育てられる馬の数が増える' },
 ];
 const upLv = k => ((game.prestige || {}).ups || {})[k] || 0;
+// 殿堂馬：引退馬の写しを保存。転生しても残り、ランキング・対戦に出せる(継承には使えない)
+const HOF_MAX = 30;
+const hofList = () => (game.prestige && game.prestige.hof) || [];
+const inHof = h => hofList().some(x => x.origId === h.id && x.name === h.name);
+const vsPool = () => [...game.retired, ...hofList()];               // 対戦に出せる馬：引退馬＋殿堂馬
 // 今回の転生でもらえるポイント：幻境レジェンド1勝3pt、幻G1(異界含む)5勝ごとに1pt
 const rebirthPts = () => { const c = game.cyc || {}; return 3 * (c.lgx || 0) + Math.floor((c.g1x || 0) / 5); };
 function prestigeHTML() {
@@ -2754,10 +2765,17 @@ function breedCard(h, key) {
     <button class="bpick ${on ? 'on' : ''}" data-bpick="${key}" ${dis && !on ? 'disabled' : ''}>${on ? '選択中 ✓' : used ? '今年は配合済み' : same ? '同じ性別' : '親にする'}</button></div>
     <div class="cr">${h.ticket ? `配合券（1回きり）・ ${h.coatName}` : `戦績 ${h.rec.join('-')} ・ ${achTxt(h)}`}</div>
     ${statValLine(h.st)}${h.sire ? `<div class="cr ped">父 ${h.sire} × 母 ${h.dam}</div>` : ''}
-    <button class="bdel" data-bdel="${key}">🗑 ${h.ticket ? 'この配合券を捨てる' : 'この馬を削除'}</button></div>`;
+    <div class="brow2">${h.ticket ? '' : inHof(h) ? '<span class="hofdone">🏆 殿堂入り済み</span>' : `<button class="hofadd" data-hofadd="${h.id}">🏆 殿堂入り</button>`}<button class="bdel" data-bdel="${key}">🗑 ${h.ticket ? 'この配合券を捨てる' : 'この馬を削除'}</button></div></div>`;
 }
 function inheritHTML() {
-  const sub = `<div class="isub">${[['breed', '🧬 配合'], ['gacha', `🎰 配合ガチャ${tixCount() ? `<em>${tixCount()}</em>` : ''}`]].map(([k, n]) => `<button data-isub="${k}" class="${inheritSub === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+  const sub = `<div class="isub">${[['breed', '🧬 配合'], ['gacha', `🎰 配合ガチャ${tixCount() ? `<em>${tixCount()}</em>` : ''}`], ['hof', `🏆 殿堂馬${hofList().length ? `<em>${hofList().length}</em>` : ''}`]].map(([k, n]) => `<button data-isub="${k}" class="${inheritSub === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+  if (inheritSub === 'hof') {
+    const L = hofList();
+    return sub + `<div class="hint">殿堂馬は転生しても消えません。ランキングと対戦にいつでも出せます（配合には使えません）。引退馬の「🏆殿堂入り」から登録できます（最大${HOF_MAX}頭）</div>` +
+      (L.length ? L.map(h => `<div class="card hofc"><div class="ch">🏆 ${sexMark(h)}<b>${h.name}</b>${worldTag(h)}<span class="cls">${clsName(h)}</span></div>
+        <div class="hofi">${h.gen || 1}代目 ・ ${h.rec.join('-')} ・ 獲得賞金 ${yen(h.prize || 0)}${h.hofAt ? ` ・ ${h.hofAt}に殿堂入り` : ''}</div>
+        ${statValLine(h.st)}<button class="bdel" data-hofdel="${h.id}">殿堂から外す</button></div>`).join('') : '<div class="empty">まだ殿堂馬はいません</div>');
+  }
   if (inheritSub === 'gacha') {
     const r = bgachaResult;
     const tixRows = TIX_GRADES.map(g => { const G = BGACHAS[g], n = game.btix[g] || 0;
@@ -2918,6 +2936,18 @@ stableEl.addEventListener('click', ev => {
   if (d.autooff) { const x = game.horses.find(y => y.id === +d.autooff); if (x) { delete x.auto; saveAll(); } renderStable(); return; }
   if (d.askrest) { const x = game.horses.find(y => y.id === +d.askrest);
     pendingAsk = { tag: '😴 休養', title: `${x.name} を休ませる`, q: `体力 ${Math.round(x.hp)} → ${Math.min(100, Math.round(x.hp + 35))}<br>今週はトレーニング・出走ができなくなります`, ok: '休養させる', run: () => restNow(x) };
+    renderStable(); return; }
+  if (d.hofadd) { const x = game.retired.find(y => y.id === +d.hofadd), P = game.prestige;
+    if (x && !inHof(x)) {
+      if (hofList().length >= HOF_MAX) { pendingAsk = { tag: '🏆 殿堂馬', title: `殿堂馬は${HOF_MAX}頭までです`, q: '「殿堂馬」タブで外してから登録してください', ok: 'OK', run: () => renderStable() }; renderStable(); return; }
+      pendingAsk = { tag: '🏆 殿堂入り', title: `${x.name} を殿堂入りさせますか？`, q: '引退馬はそのまま残り、写しが殿堂馬として保存されます。<br>殿堂馬は転生しても消えず、ランキングと対戦に出せます（配合には使えません）', ok: '殿堂入り',
+        run: () => { const c = JSON.parse(JSON.stringify(x)); c.origId = x.id; c.id = 1e9 + (P.hofSeq = (P.hofSeq || 0) + 1); c.hof = true; c.hofAt = `${P.count ? `転生${P.count}回目・` : ''}${game.year}年目`;
+          (P.hof || (P.hof = [])).push(c); saveAll(); renderStable(); } };
+    }
+    renderStable(); return; }
+  if (d.hofdel) { const P = game.prestige, x = hofList().find(y => y.id === +d.hofdel);
+    if (x) pendingAsk = { tag: '🏆 殿堂馬', title: `${x.name} を殿堂から外しますか？`, q: '殿堂から外すと元には戻せません（引退馬に残っていれば、もう一度殿堂入りできます）', ok: '外す',
+      run: () => { P.hof = hofList().filter(y => y !== x); if (online.vsHorseId === x.id) online.vsHorseId = -1; saveAll(); renderStable(); } };
     renderStable(); return; }
   if (d.bdel) {
     const k = d.bdel, x = breedHorse(k);
