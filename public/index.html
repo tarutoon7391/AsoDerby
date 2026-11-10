@@ -393,6 +393,22 @@ button.main{background:#2ecc71;color:#fff}
 #stable .pcard ul{font-size:11px;margin:0 0 8px;padding-left:18px;line-height:1.6;opacity:.85}
 #stable .pcard .pstat{font-size:12px;margin:4px 0 8px}
 #stable .pcard .pstat b{font-size:16px;color:#b8860b}
+#stable .pearn{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff3cc;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:12px;font-weight:700}
+#stable .pearn small{font-size:10px;font-weight:600;opacity:.75}
+#stable .pearn > b{font-size:24px;color:#b8860b;white-space:nowrap}
+#stable .pearn > b small{font-size:12px}
+#stable .ppts{float:right;font-size:12px;font-weight:700}
+#stable .ppts b{font-size:16px;color:#b8860b}
+#stable .pcat{font-size:11px;font-weight:900;color:#8a6a3a;margin:10px 0 4px;border-bottom:1px dashed #e1cda8;padding-bottom:2px}
+#stable .pitem{display:flex;align-items:center;gap:8px;padding:7px 0}
+#stable .pitem .pi1{font-size:24px;flex:none;width:30px;text-align:center}
+#stable .pitem .pi2{flex:1;min-width:0}
+#stable .pitem .pi2 > b{display:flex;align-items:baseline;gap:6px;font-size:13px}
+#stable .pitem .pi2 > b small{font-size:10px;color:#8a6a3a}
+#stable .pitem p{font-size:10px;line-height:1.4;margin:1px 0 2px;opacity:.75}
+#stable .pitem .pfx{font-size:10.5px;color:#4a6a2a}
+#stable .pitem button{flex:none;min-width:56px;padding:7px 6px;border-radius:10px;font-size:12px;font-weight:900;background:linear-gradient(180deg,#ffe28a,#f2c94c);border:2px solid #d4a62a;color:#4a3518}
+#stable .pitem button:disabled{opacity:.4}
 #stable .pnotice{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:62;width:min(320px,86%);background:linear-gradient(180deg,#fffbe8,#fff);border:3px solid #e8c24a;border-radius:18px;padding:18px 16px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)}
 #stable .pnotice .pn1{font-size:44px}
 #stable .pnotice b{display:block;font-size:17px;margin:4px 0 6px;color:#4a3518}
@@ -474,6 +490,7 @@ button.main{background:#2ecc71;color:#fff}
 #stable .rworld button.on{background:#6aa84f;border-color:#4e8a39;color:#fff}
 #stable .rworld button.w2.on{background:linear-gradient(135deg,#2b1f5c,#5b3f9a);border-color:#8a6cc4;color:#fff}
 #stable .rsort.w2 button.on{background:linear-gradient(135deg,#3a2a6a,#6a4bb0);border-color:#8a6cc4;color:#fff}
+#stable .rrow .pcm{margin-left:5px;font-size:10px;font-weight:900;color:#b8860b}
 #stable .rrow .seen{flex:none;font-size:9.5px;font-weight:700;color:#8a7a62;white-space:nowrap}
 #stable .rrow .seen.on{color:#2e9d4a}
 #stable .bfilter{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px}
@@ -1479,7 +1496,7 @@ function genNPC(cls, sd = 3, boost = 0) {
 // 健康150を超えた分のおまけ(150までの効果は体力・ケガ・調子でもう頭打ちなので、その先の使い道)
 const HLT_OVER = 150;
 const hltAbility = hlt => Math.min(3, Math.max(0, (hlt - HLT_OVER) / 100));        // 能力 +1/健康100、最大+3(健康450)
-const hltRaceCost = hlt => 20 * (1 - Math.min(0.25, Math.max(0, (hlt - HLT_OVER) / 1000)));   // レース後の体力消費20→最小15(健康400)。休養(+35)の意味は残す
+const hltRaceCost = hlt => 20 * (1 - Math.min(0.25, Math.max(0, (hlt - HLT_OVER) / 1000))) * (1 - 0.05 * upLv('iron'));   // 鉄の体   // レース後の体力消費20→最小15(健康400)。休養(+35)の意味は残す
 function calcAbility(st) {
   let a = 0; for (const k in DIST_W) a += DIST_W[k] * st[k];
   a += hltAbility(st.hlt || 0);
@@ -1910,7 +1927,8 @@ spdBtn.onclick = () => { if (isVsGuest()) return; speed = speed === 1 ? 2 : spee
 addEventListener('resize', () => refreshView());
 
 // ================= 育成モード =================
-const WEEKS = 52, MAX_HORSES = 4, RETIRE_AGE = 6;               // 1年52週・最大4頭・6歳で引退
+const WEEKS = 52, RETIRE_AGE = 6;
+const maxHorses = () => 4 + upLv('stable');                          // 厩舎の最大頭数(厩舎拡張で増える)               // 1年52週・最大4頭・6歳で引退
 const PRIZE = [25000, 20000, 50000, 100000, 180000, 500000, 1000000, 3000000,
   1250000, 1000000, 2500000, 5000000, 9000000, 25000000, 50000000, 150000000];   // 第2層は50倍(上級調教の資金源)  // 1着賞金(クラス順)。週の給料以外の稼ぎ手段なので多め
 const PRIZE_RATE = [1, 0.4, 0.25, 0.15, 0.1];                     // 1〜5着の賞金割合
@@ -1970,6 +1988,7 @@ function myStats() {
   return { g1: game.g1Total || 0, lg: game.lgTotal || 0, top: keep('top', top && top.prize > 0 ? { name: top.name, prize: top.prize } : null, x => x.prize),
     g1h: keep('g1h', ace(h => (W(h)[5] || 0) + (W(h)[6] || 0)), x => x.n), lgh: keep('lgh', ace(h => W(h)[7] || 0), x => x.n),
     // 幻境(第2層)のランキング用。幻境に馬がいる人だけ載る
+    pc: (game.prestige || {}).count || 0,                            // 転生回数
     w2: hasW2() || (game.lgx || 0) + (game.g1x || 0) > 0, g1x: game.g1x || 0, lgx: game.lgx || 0,
     g1xh: keep('g1xh', ace(h => (W(h)[13] || 0) + (W(h)[14] || 0)), x => x.n), lgxh: keep('lgxh', ace(h => W(h)[15] || 0), x => x.n) };
 }
@@ -1996,6 +2015,8 @@ function applySaveData(d) {
   }
   // プレステージ(転生)の記録。転生しても消えない
   if (!game.prestige || typeof game.prestige !== 'object') game.prestige = { open: false, pts: 0, count: 0, ups: {} };
+  if (!game.prestige.ups) game.prestige.ups = {};
+  if (!game.cyc && !game.prestige.count) game.cyc = { lgx: game.lgx || 0, g1x: game.g1x || 0 };   // 1周目は今までの幻境の勝ちをそのまま数える
   if (!game.prestige.open && ((game.lgx || 0) > 0 || [...(game.horses || []), ...(game.retired || [])].some(h => (h.wins || {})[15]))) game.prestige.open = true;   // すでに条件を満たしている人は演出なしで解放
   if (game.g1x == null || game.lgx == null) {                       // 幻境の通算勝利数(古いデータはいまいる馬から作る)
     const all = [...(game.horses || []), ...(game.retired || [])];
@@ -2063,11 +2084,11 @@ const w2Parent = p => hw(p) === 2 || ((p.wins || {})[7] || 0) >= 3;
 function breedFoal(a, b) {
   const h = makeHorse(20, false), g = capGain(a, b);
   for (const k of CORE_KEYS) {
-    h.cap[k] = Math.max(20, (a.st[k] + b.st[k]) / 2 + g + 1.5 * randn());        // 親の「実際の能力」の平均＋α。鍛えた親からしか親超えの子は生まれない
-    h.st[k] = Math.max(10, Math.min(h.cap[k] - 3, 0.6 * (a.st[k] + b.st[k]) / 2 + 3 * randn()));
+    h.cap[k] = Math.max(20, (a.st[k] + b.st[k]) / 2 + g + 2 * upLv('blood') + 1.5 * randn());   // 血統の記憶で上乗せ        // 親の「実際の能力」の平均＋α。鍛えた親からしか親超えの子は生まれない
+    h.st[k] = Math.max(10, Math.min(h.cap[k] - 3, (0.6 + 0.03 * upLv('talent')) * (a.st[k] + b.st[k]) / 2 + 3 * randn()));   // 天性の才で初期能力アップ
   }
   for (const k of APT_KEYS) {                                      // 健康・適性は 親の平均50% ＋ ランダム50%
-    h.st[k] = clampStat(0.5 * (a.st[k] + b.st[k]) / 2 + 0.5 * lowStat());
+    { const r = Math.min(1, 0.5 + 0.05 * upLv('consti')); h.st[k] = clampStat(r * (a.st[k] + b.st[k]) / 2 + (1 - r) * lowStat()); }   // 体質の継承
     h.cap[k] = NO_CAP;
   }
   const cs = Math.random() < 0.5 ? a : b;
@@ -2604,7 +2625,7 @@ function rankingHTML() {
   const list = [...online.ranking].filter(p => bet ? p.n : S === 'top' ? p.top : x2 ? p.w2 : p.st).sort((a, b) => val(b) - val(a));
   const myIdx = list.findIndex(p => p.pid === player.id);
   const sub = p => bet ? `${p.n}点 ・ 的中${p.hits}` : S === 'top' ? `🐎 ${escO(p.top.name)}` : (h => h ? `🐎 ${escO(h.name)}（${h.n}勝）` : '')({ g1: p.g1h, lg: p.lgh, g1x: p.g1xh, lgx: p.lgxh }[S]);
-  const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><div class="rmid"><b>${escO(p.name)}</b><small>${seenTag(p)}${sub(p) ? `<span class="rsub">${sub(p)}</span>` : ''}</small></div><em>${fmt(val(p))}</em></div>`;
+  const row = (p, k) => `<div class="rrow ${p.pid === player.id ? 'me' : ''}"><span class="rk${k < 3 ? ' top' : ''}">${k + 1}</span><div class="rmid"><b>${escO(p.name)}${p.pc ? `<span class="pcm">🔄${p.pc}</span>` : ''}</b><small>${seenTag(p)}${sub(p) ? `<span class="rsub">${sub(p)}</span>` : ''}</small></div><em>${fmt(val(p))}</em></div>`;
   return `<div class="rworld"><button data-on="rworld" data-v="1" class="${w2v ? '' : 'on'}">通常</button><button data-on="rworld" data-v="2" class="w2 ${w2v ? 'on' : ''}">🔮 幻境</button></div>
     <div class="rsort ${w2v ? 'w2' : ''}">${tabs.map(k => [k, defs[k]]).map(([k, [n]]) => `<button data-on="sort" data-v="${k}" class="${S === k ? 'on' : ''}">${n}</button>`).join('')}<button data-on="refresh" class="rf">↻</button></div>
     <div class="hint">${bet ? '普段のレースで買った馬券の成績が自動で集計されます' : S === 'top' ? 'これまで育てた馬(手放した馬も含む)の中で、一番賞金を稼いだ馬と獲得賞金' : S === 'g1' ? '自分の馬が勝ったG1(海外G1を含む)の通算勝利数' : S === 'lg' ? '自分の馬が勝ったレジェンドカップの通算勝利数'
@@ -2678,19 +2699,48 @@ function seenTag(p) {
   return `<span class="seen">${t}</span>`;
 }
 // ===== プレステージ(転生) =====
+// 転生ポイントショップ。lv は何回買ったか。cost(次に買うときのレベル)
+const PSHOP = [
+  { k: 'blood', ic: '🧬', n: '血統の記憶', cat: '継承', max: 10, cost: l => 3 + 2 * l, fx: l => `子の能力上限 +${2 * l}`, d: '生まれる子の基本4能力の上限が上がる。世代を重ねるほど効いてくる' },
+  { k: 'talent', ic: '🌱', n: '天性の才', cat: '継承', max: 10, cost: l => 2 + l, fx: l => `子の初期能力 ${60 + 3 * l}%`, d: '子の生まれたときの基本能力(両親の平均に対する割合)が上がる' },
+  { k: 'consti', ic: '🍀', n: '体質の継承', cat: '継承', max: 10, cost: l => 2 + l, fx: l => `親の適性を ${50 + 5 * l}% 受け継ぐ`, d: '健康・芝・ダート・雨耐性を親から受け継ぐ割合が上がる' },
+  { k: 'trainer', ic: '🏋️', n: '名伯楽', cat: '育成', max: 20, cost: l => 2 + l, fx: l => `調教の伸び +${5 * l}%`, d: 'すべての施設・トレーニングで能力の伸びが上がる(自動トレーニングにも効く)' },
+  { k: 'iron', ic: '💪', n: '鉄の体', cat: '育成', max: 10, cost: l => 2 + l, fx: l => `体力の減り −${5 * l}%`, d: '調教とレース後の体力の減りが小さくなる' },
+  { k: 'merchant', ic: '💰', n: '豪商の血', cat: 'お金', max: 20, cost: l => 1 + l, fx: l => `賞金 +${10 * l}%`, d: 'レースの賞金が増える' },
+  { k: 'fund', ic: '🏦', n: '軍資金', cat: 'お金', max: 20, cost: () => 1, fx: l => `転生後の所持金 +${yen(500000 * l)}`, d: '転生した直後の所持金が増える(普段は2万円スタート)' },
+  { k: 'stable', ic: '🏠', n: '厩舎拡張', cat: '特別', max: 4, cost: l => 3 + 2 * l, fx: l => `厩舎の最大頭数 ${4 + l}頭`, d: '同時に育てられる馬の数が増える' },
+];
+const upLv = k => ((game.prestige || {}).ups || {})[k] || 0;
+// 今回の転生でもらえるポイント：幻境レジェンド1勝3pt、幻G1(異界含む)5勝ごとに1pt
+const rebirthPts = () => { const c = game.cyc || {}; return 3 * (c.lgx || 0) + Math.floor((c.g1x || 0) / 5); };
 function prestigeHTML() {
-  const P = game.prestige;
+  const P = game.prestige, c = game.cyc || {}, earn = rebirthPts();
   if (!P.open) return `<div class="plock"><div class="pl1">🔒</div><b>プレステージ</b><p>幻境レジェンドを1度でも勝つと解放されます</p></div>`;
+  const item = it => { const l = upLv(it.k), max = l >= it.max, cost = max ? 0 : it.cost(l);
+    return `<div class="pitem"><div class="pi1">${it.ic}</div><div class="pi2"><b>${it.n}<small>Lv ${l}/${it.max}</small></b><p>${it.d}</p>
+      <span class="pfx">${l ? it.fx(l) : 'まだ強化していない'}${max ? '' : ` → <b>${it.fx(l + 1)}</b>`}</span></div>
+      <button data-pbuy="${it.k}" ${max || P.pts < cost ? 'disabled' : ''}>${max ? 'MAX' : `${cost}pt`}</button></div>`; };
+  const cats = [...new Set(PSHOP.map(x => x.cat))];
   return `<div class="pwrap">
     <div class="pcard rebirth"><div class="ph">🔄 転生</div>
       <p>今の牧場をすべてリセットして1年目からやり直し、<b>転生ポイント</b>を受け取ります。</p>
-      <ul><li>消えるもの：馬・引退馬・配合券・所持金・年数</li><li>残るもの：転生ポイントと、ショップで強化した内容</li></ul>
+      <ul><li>消えるもの：馬・引退馬・配合券・所持金・年数</li><li>残るもの：転生ポイント、ショップで強化した内容、ランキングの記録</li></ul>
+      <div class="pearn"><div>今回の実績<br><small>幻境レジェンド ${c.lgx || 0}勝 ×3pt ／ 幻G1 ${c.g1x || 0}勝(5勝で1pt)</small></div><b>+${earn}<small>pt</small></b></div>
       <div class="pstat"><span>転生回数 <b>${P.count}</b>回</span></div>
-      <button class="main" disabled>転生する（準備中）</button></div>
-    <div class="pcard shop"><div class="ph">🛒 転生ポイントショップ</div>
-      <div class="pstat"><span>所持ポイント <b>${P.pts.toLocaleString()}</b> pt</span></div>
-      <div class="empty">ショップの品ぞろえは準備中です</div></div>
+      <button class="main" data-askrebirth ${earn > 0 ? '' : 'disabled'}>${earn > 0 ? `転生して ${earn}pt 受け取る` : 'まだポイントがもらえません'}</button></div>
+    <div class="pcard shop"><div class="ph">🛒 転生ポイントショップ<span class="ppts">所持 <b>${P.pts.toLocaleString()}</b>pt</span></div>
+      ${cats.map(ct => `<div class="pcat">${ct}</div>` + PSHOP.filter(x => x.cat === ct).map(item).join('')).join('')}</div>
   </div>`;
+}
+// 転生：プレステージの記録とランキングの通算記録だけを残して、牧場を1年目からやり直す
+function doRebirth() {
+  const earn = rebirthPts(); if (earn <= 0) return;
+  const P = game.prestige, keep = { prestige: P, best: game.best, g1Total: game.g1Total, lgTotal: game.lgTotal, g1x: game.g1x, lgx: game.lgx };
+  P.pts += earn; P.count += 1; delete P.notice;
+  game = freshGame(); Object.assign(game, keep); game.cyc = { lgx: 0, g1x: 0 };
+  money = 20000 + 500000 * upLv('fund');
+  game.log = [`🔄 転生しました（${P.count}回目）。転生ポイント +${earn}pt`];
+  refreshSale(); stableTab = 'prestige'; saveAll();
 }
 function bulkDelHTML() {
   const rows = Object.values(BRAR).map(r => [r, game.tickets.filter(h => h.rar === r.n).length]).filter(([, n]) => n);
@@ -2724,7 +2774,7 @@ function inheritHTML() {
         ${statValLine(r.st)}<div class="hint">配合券を手に入れました（「配合」で1回使えます）</div></div>` : ''}
     </div>`;
   }
-  const [a, b] = breedSel.map(breedHorse), full = game.horses.length >= MAX_HORSES, cost = breedCost();
+  const [a, b] = breedSel.map(breedHorse), full = game.horses.length >= maxHorses(), cost = breedCost();
   const slot = (h, n) => h ? `<div class="pslot on"><small>${n}</small><b>${sexMark(h)} ${h.name}</b><span>${h.ticket ? `配合券・${h.rar}` : `${h.gen || 1}代目`}</span></div>` : `<div class="pslot"><small>${n}</small><span>下から選んでね</span></div>`;
   const pv = a && b ? `<div class="bprev">生まれるのは <b>${Math.max(a.gen || 1, b.gen || 1) + 1}代目</b> の子です</div>` : '';
   const can = a && b && a.sex !== b.sex && !full && money >= cost;
@@ -2739,7 +2789,7 @@ function inheritHTML() {
   ${breedListHTML()}`;
 }
 function saleCard(h, k) {
-  const full = game.horses.length >= MAX_HORSES;
+  const full = game.horses.length >= maxHorses();
   return `<div class="card">
     <div class="ch">${sexMark(h)}<b>${h.name}</b><span>${h.sex}2歳</span><span>${styleTag(h.style)}</span></div>
     ${statValLine(h.st)}
@@ -2769,7 +2819,7 @@ function renderStable() {
           : viewW() === 2 ? '<div class="empty">第2層にいる現役馬はいません。レジェンドカップを3勝した馬の子が第2層で生まれます</div>' : '<div class="empty">まだ馬がいません。「セリ」か「ガチャ」で馬を手に入れよう</div>'; })() +
       '';                                                   // 「データを消して最初から」ボタンは廃止
   } else if (stableTab === 'sale') {
-    body = `<div class="hint">毎週4頭が上場されます（厩舎は最大${MAX_HORSES}頭）</div>` + game.sale.map(saleCard).join('');
+    body = `<div class="hint">毎週4頭が上場されます（厩舎は最大${maxHorses()}頭）</div>` + game.sale.map(saleCard).join('');
   } else if (stableTab === 'online') {
     body = onlineHTML();
   } else if (stableTab === 'prestige') {
@@ -2777,8 +2827,8 @@ function renderStable() {
   } else if (stableTab === 'gacha') {
     body = `<div class="gacha">
       <div class="rates">${GACHA.map(g => `<span style="color:${g.c}">${g.n} ${Math.round(g.p * 100)}%</span>`).join(' / ')}</div>
-      <button class="main big" data-gacha ${money < GACHA_COST || game.horses.length >= MAX_HORSES ? 'disabled' : ''}>🎰 1回 ${yen(GACHA_COST)}</button>
-      ${game.horses.length >= MAX_HORSES ? '<div class="hint">厩舎が満員です</div>' : ''}
+      <button class="main big" data-gacha ${money < GACHA_COST || game.horses.length >= maxHorses() ? 'disabled' : ''}>🎰 1回 ${yen(GACHA_COST)}</button>
+      ${game.horses.length >= maxHorses() ? '<div class="hint">厩舎が満員です</div>' : ''}
       ${gachaResult ? `<div class="gres" style="border-color:${gachaResult.r.c}"><div class="rar" style="color:${gachaResult.r.c}">${gachaResult.r.n}</div>
         ${sexMark(gachaResult.h)} <b>${gachaResult.h.name}</b> ${styleTag(gachaResult.h.style)}
         ${statValLine(gachaResult.h.st)}<div class="hint">厩舎に入りました</div></div>` : ''}
@@ -2862,6 +2912,9 @@ stableEl.addEventListener('click', ev => {
       check: { on: same, label: '🔁 毎週このトレーニングを行う', sub: '週送りのとき自動で実行。体力が足りない週はお休み。手動で調教・休養・出走した週はやらない' },
       run: on => { if (on) x.auto = { stat: x.act.stat, grade: x.act.grade }; else if (same) delete x.auto; trainNow(x); } };
     renderStable(); return; }
+  if (d.askrebirth !== undefined) { const e = rebirthPts();
+    pendingAsk = { tag: '🔄 転生', title: `転生して ${e}pt 受け取りますか？`, q: '馬・引退馬・配合券・所持金・年数がすべて消えて、1年目からやり直しになります。<br>転生ポイント・ショップの強化・ランキングの記録は残ります。<b>元には戻せません</b>', ok: '転生する', run: () => { doRebirth(); renderStable(); } };
+    renderStable(); return; }
   if (d.autooff) { const x = game.horses.find(y => y.id === +d.autooff); if (x) { delete x.auto; saveAll(); } renderStable(); return; }
   if (d.askrest) { const x = game.horses.find(y => y.id === +d.askrest);
     pendingAsk = { tag: '😴 休養', title: `${x.name} を休ませる`, q: `体力 ${Math.round(x.hp)} → ${Math.min(100, Math.round(x.hp + 35))}<br>今週はトレーニング・出走ができなくなります`, ok: '休養させる', run: () => restNow(x) };
@@ -2899,6 +2952,8 @@ stableEl.addEventListener('click', ev => {
   else if (naming) return;                                  // 名付け中は他の操作をしない
   if (d.coat !== undefined || d.nworld !== undefined || d.rname !== undefined || el.id === 'nameOk') {}
   else if (d.pnotice !== undefined) { delete game.prestige.notice; saveAll(); }
+  else if (d.pbuy) { const it = PSHOP.find(x => x.k === d.pbuy), P = game.prestige, l = upLv(d.pbuy);
+    if (it && l < it.max && P.pts >= it.cost(l)) { P.pts -= it.cost(l); P.ups[it.k] = l + 1; saveAll(); } }
   else if (d.stab) { stableTab = d.stab; gachaResult = null; bgachaResult = null; stableView = 'list'; breedSel = breedSel.filter(breedHorse); if (d.stab === 'online') { connectOnline(); if (sock && online.connected) sock.emit('getRanking'); } }
   else if (d.sel) { selId = +d.sel; stableView = 'detail'; detailTab = 'info'; }
   else if (d.hnav) {                                      // 育成画面の左右矢印で前後の馬へ(タブはそのまま)
@@ -2936,7 +2991,7 @@ stableEl.addEventListener('click', ev => {
   }
   else if (d.breed !== undefined) {
     const [a, b] = breedSel.map(breedHorse), cost = breedCost();
-    if (a && b && a.sex !== b.sex && money >= cost && game.horses.length < MAX_HORSES) {
+    if (a && b && a.sex !== b.sex && money >= cost && game.horses.length < maxHorses()) {
       money -= cost;
       const [sire, dam] = a.sex === '牝' ? [b, a] : [a, b];
       const x = breedFoal(sire, dam);
@@ -2955,10 +3010,10 @@ stableEl.addEventListener('click', ev => {
   }
   else if (d.buysale !== undefined) {
     const x = game.sale[+d.buysale];
-    if (x && money >= x.price && game.horses.length < MAX_HORSES) { money -= x.price; delete x.price; game.horses.push(x); game.sale.splice(+d.buysale, 1); naming = { h: x, from: 'セリで落札' }; }
+    if (x && money >= x.price && game.horses.length < maxHorses()) { money -= x.price; delete x.price; game.horses.push(x); game.sale.splice(+d.buysale, 1); naming = { h: x, from: 'セリで落札' }; }
   }
   else if (d.gacha !== undefined) {
-    if (money >= GACHA_COST && game.horses.length < MAX_HORSES) {
+    if (money >= GACHA_COST && game.horses.length < maxHorses()) {
       money -= GACHA_COST;
       const r = pick(GACHA, GACHA.map(g => g.p)), x = makeHorseC(r.lo + Math.random() * (r.hi - r.lo), r.n === 'SSR' && Math.random() < 0.5, r.n === 'SSR');
       game.horses.push(x); gachaResult = { r, h: x }; naming = { h: x, from: 'ガチャ', r };
@@ -2972,7 +3027,7 @@ stableEl.addEventListener('click', ev => {
 
 // ===== 週の進行 =====
 function applyResult(h, pos, c, name) {
-  const prize = pos <= 5 ? Math.floor(PRIZE[c] * PRIZE_RATE[pos - 1]) : 0, wr = { n: name || weekRace(game.week).n };
+  const prize = pos <= 5 ? Math.floor(PRIZE[c] * PRIZE_RATE[pos - 1] * (1 + 0.1 * upLv('merchant'))) : 0, wr = { n: name || weekRace(game.week).n };
   money += prize; h.prize += prize; h.rec[Math.min(pos, 4) - 1]++;
   h.hp = Math.max(0, h.hp - hltRaceCost(h.st.hlt));
   let msg = `${h.name}：${wr.n} ${pos}着${prize ? `（賞金 ${yen(prize)}）` : ''}`;
@@ -2980,8 +3035,8 @@ function applyResult(h, pos, c, name) {
     h.wins = h.wins || {}; h.wins[c] = (h.wins[c] || 0) + 1;
     if (c === 5 || c === 6) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🏆G1制覇！（今年${h.yearG1}勝）`; game.g1Total = (game.g1Total || 0) + 1; }
     if (c === 7) { msg += ' 👑レジェンド制覇！'; game.lgTotal = (game.lgTotal || 0) + 1; if ((h.wins[7] || 0) >= 3) msg += ' ✨この馬の子は第2層「幻境」へ行けます'; }
-    if (c === 13 || c === 14) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🔮幻境G1制覇！（今年${h.yearG1}勝）`; game.g1x = (game.g1x || 0) + 1; }
-    if (c === 15) { msg += ' 🌌幻境レジェンド制覇！'; game.lgx = (game.lgx || 0) + 1;
+    if (c === 13 || c === 14) { h.yearG1 = (h.yearG1 || 0) + 1; msg += ` 🔮幻境G1制覇！（今年${h.yearG1}勝）`; game.g1x = (game.g1x || 0) + 1; (game.cyc || (game.cyc = {})).g1x = (game.cyc.g1x || 0) + 1; }
+    if (c === 15) { msg += ' 🌌幻境レジェンド制覇！'; game.lgx = (game.lgx || 0) + 1; (game.cyc || (game.cyc = {})).lgx = (game.cyc.lgx || 0) + 1;
       if (!game.prestige.open) { game.prestige.open = true; game.prestige.notice = true; msg += ' 🔓プレステージ解放！'; } }
     if (BGACHAS[c]) { game.btix[c] = (game.btix[c] || 0) + 1; msg += ` 🎟${BGACHAS[c].n}ガチャ券ゲット`; }
   }
@@ -3017,7 +3072,8 @@ function trainNow(h) {
   runTrainingQueue([item], () => showStable());
 }
 // 調教の体力消費(自動トレーニングの「体力がなくなったらお休み」の判定にも使う)
-const trainHpCost = (h, stat) => stat === 'cond' ? 5 : 12 * Math.max(0, 1.2 - h.st.hlt / 100) * ((TRAIN_OF[stat] || {}).hp || 1);
+const ironF = () => 1 - 0.05 * upLv('iron');                         // 鉄の体：体力の減りを抑える
+const trainHpCost = (h, stat) => stat === 'cond' ? 5 : 12 * Math.max(0, 1.2 - h.st.hlt / 100) * ((TRAIN_OF[stat] || {}).hp || 1) * ironF();
 // 調教を1回行う(画面の演出なし)。手動と自動で同じ伸び・疲れ・ケガになる
 function trainApply(h, stat, grade) {
   const a = { stat, grade }, g = GRADES[grade];
@@ -3034,14 +3090,14 @@ function trainApply(h, stat, grade) {
     for (const k of tr.ks || [a.stat]) {
       const before = h.st[k];
       const up = (0.6 + Math.random() * 0.6) * g.gain * (tr.f || 1)   // トレセン(2000円)で鍛え続けると、G3級の素質の初代が数年かけて「G3をたまに勝てる」くらいになる伸び
-         * Math.max(0.35, 1 - before / 140) * (great ? 2.5 : 1) * (tired ? 0.6 : 1);   // 高いほど伸びにくい。疲れていると伸びが鈍る
+         * Math.max(0.35, 1 - before / 140) * (great ? 2.5 : 1) * (tired ? 0.6 : 1) * (1 + 0.05 * upLv('trainer'));   // 名伯楽   // 高いほど伸びにくい。疲れていると伸びが鈍る
       h.st[k] = Math.min(Math.max(before, capOf(h, k)), clampStat(before + up)); h.grow[k] = (h.grow[k] || 0) + 1;
     }
     item = { h, t: tr, grade: a.grade, ok, great, rate };
     // 上限に達した能力があれば10%の確率で、調教師が1つだけ「もう伸びない」と教えてくれる(複数あればランダムに1つ)
     const full = CAP_KEYS.filter(k => atCap(h, k));
     if (full.length && Math.random() < 0.1) item.capTalk = fill(pk(CAP_TALK), { s: statName(randPick(full)) });
-    h.hp = Math.max(0, h.hp - 12 * Math.max(0, 1.2 - h.st.hlt / 100) * (tr.hp || 1));   // 健康が高くても体力は増えない(消費0が下限)
+    h.hp = Math.max(0, h.hp - 12 * Math.max(0, 1.2 - h.st.hlt / 100) * (tr.hp || 1) * ironF());   // 健康が高くても体力は増えない(消費0が下限)
     if (h.hp < 25 && Math.random() < (25 - h.hp) / 60 * (1 - (h.st.hlt - 19) / 120)) { h.injured = 2 + Math.floor(Math.random() * 3); item.injured = h.injured; }
   }
   item.hpB = hpB; item.hpA = h.hp; item.condB = condB; item.cost = g.cost;
